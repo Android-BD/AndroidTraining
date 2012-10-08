@@ -47,14 +47,6 @@ public class MainActivity extends Activity {
 	}
 
 	@Override
-	protected void onResume() {
-		super.onResume();
-
-		
-
-	}
-
-	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
@@ -71,21 +63,6 @@ public class MainActivity extends Activity {
 		} catch (NumberFormatException e) {
 
 		}
-
-		SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
-				MODE_PRIVATE);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putBoolean("activate", activate);
-		editor.putInt("sensitivity", sensitivity);
-		editor.putInt("timeout", timeout);
-		editor.commit(); // Commit changes to file!!!
-
-		// ((SeekBar)
-		// findViewById(R.id.seekBarSensitivity)).setEnabled(!activate);
-		// ((EditText)
-		// findViewById(R.id.editTextTimeout)).setEnabled(!activate);
-		// ((EditText)
-		// findViewById(R.id.editTextTimeout)).setFocusable(!activate);
 
 		if (activate) {
 			startAntiTheftService();
@@ -132,5 +109,19 @@ public class MainActivity extends Activity {
 		
 		// stop service
 		stopService(intent);
+	}
+	
+	@Override
+	protected void onPause() {
+		super.onPause();
+		
+		// save settings
+		SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
+				MODE_PRIVATE);
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putBoolean("activate", activate);
+		editor.putInt("sensitivity", sensitivity);
+		editor.putInt("timeout", timeout);
+		editor.commit(); // Commit changes to file!!!
 	}
 }
