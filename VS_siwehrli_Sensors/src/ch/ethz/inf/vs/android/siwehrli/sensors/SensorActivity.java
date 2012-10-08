@@ -8,25 +8,20 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Intent;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 
 public class SensorActivity extends Activity {
 
-	private int sensorAccuracy;
 	private Sensor selectedSensor;
 	private SensorManager mySensorManager;
 	private SensorEventListener mySensorListener;
-	private ListView valueList;
-	private ListView valueDescriptionList;
-	private ArrayAdapter<Float> valueAdapter;
-	private ArrayAdapter<String> valueDescriptionAdapter;
 	private TextView sensorName;
-
+	private TextView value0Box;
+	private TextView value1Box;
+	private TextView value2Box;
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -39,44 +34,28 @@ public class SensorActivity extends Activity {
 		mySensorListener = new SensorEventListener() {
 
 			public void onSensorChanged(SensorEvent event) {
-				valueAdapter.clear();
-				for (float value : event.values) {
-					valueAdapter.add(value);
-				}
 				sensorName.setText(selectedSensor.getName());
+				value0Box.setText(Float.toString(event.values[0]));
+				value1Box.setText(Float.toString(event.values[1]));
+				value2Box.setText(Float.toString(event.values[2]));
 			}
 
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
 				selectedSensor = sensor;
-				sensorAccuracy = accuracy;
 				sensorName.setText(selectedSensor.getName());
-
 			}
 		};
 		
 		// get GUI elements
 		sensorName = (TextView) findViewById(R.id.sensorName);
-		
-
-		valueList = (ListView) findViewById(R.id.valueList);
-		valueDescriptionList = (ListView) findViewById(R.id.valueDescriptionList);
-
+		value0Box = (TextView) findViewById(R.id.value0Box);
+		value1Box = (TextView) findViewById(R.id.value1Box);
+		value2Box = (TextView) findViewById(R.id.value2Box);
 		// get sensor index back
 		Intent startIntent = getIntent();
 		selectedSensor = sensorList.get(startIntent.getIntExtra("sensorId", 0));
 		mySensorManager.registerListener(mySensorListener, selectedSensor,
 				SensorManager.SENSOR_DELAY_FASTEST);
-
-		valueAdapter = new ArrayAdapter<Float>(this,
-				android.R.layout.simple_list_item_1);
-		valueDescriptionAdapter = new ArrayAdapter<String>(this,
-				android.R.layout.simple_list_item_1);
-		
-		valueDescriptionAdapter.add("Values");
-		
-		valueDescriptionList.setAdapter(valueDescriptionAdapter);
-		valueList.setAdapter(valueAdapter);
-
 	}
 
 	@Override

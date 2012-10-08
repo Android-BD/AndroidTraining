@@ -10,6 +10,8 @@
     <string name="title_activity_actuators">ActuatorsActivity</string>
     <string name="actuator_string">Actuators Activity</string>
     <string name="play_sound">Play sound</string>
+    <string name="accuracy_text">Accuracy:</string>
+    <string name="values_text">Values:</string>
     <string name="button_vibrate">Vibrate</string>
     
 </resources>
