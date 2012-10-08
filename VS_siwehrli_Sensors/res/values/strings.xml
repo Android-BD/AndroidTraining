@@ -6,6 +6,10 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_sensor">SensorActivity</string>
     <string name="sensor_readings">Sensor readings:</string>
-    <string name="blank"/>
-
+    <string name="blank" />
+    <string name="title_activity_actuators">ActuatorsActivity</string>
+    <string name="actuator_string">Actuators Activity</string>
+    <string name="play_sound">Play sound</string>
+    <string name="button_vibrate">Vibrate</string>
+    
 </resources>

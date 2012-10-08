@@ -43,6 +43,7 @@ public class SensorActivity extends Activity {
 				for (float value : event.values) {
 					valueAdapter.add(value);
 				}
+				sensorName.setText(selectedSensor.getName());
 			}
 
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -53,7 +54,6 @@ public class SensorActivity extends Activity {
 			}
 		};
 		
-		Log.d("bla","yep here");
 		// get GUI elements
 		sensorName = (TextView) findViewById(R.id.sensorName);
 		

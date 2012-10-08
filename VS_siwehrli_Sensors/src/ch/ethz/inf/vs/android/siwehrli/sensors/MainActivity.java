@@ -51,4 +51,11 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.activity_main, menu);
         return true;
     }
+    
+    public void onActuatorButtonClick(View v)
+    {
+    	Intent actuatorsIntent = new Intent(this, ActuatorsActivity.class);
+    	startActivity(actuatorsIntent);
+    }
+    
 }
