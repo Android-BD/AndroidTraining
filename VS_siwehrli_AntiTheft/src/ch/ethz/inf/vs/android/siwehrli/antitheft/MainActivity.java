@@ -47,6 +47,14 @@ public class MainActivity extends Activity {
 	}
 
 	@Override
+	protected void onResume() {
+		super.onResume();
+
+		
+
+	}
+
+	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
@@ -71,30 +79,58 @@ public class MainActivity extends Activity {
 		editor.putInt("sensitivity", sensitivity);
 		editor.putInt("timeout", timeout);
 		editor.commit(); // Commit changes to file!!!
-		
-		((SeekBar) findViewById(R.id.seekBarSensitivity)).setEnabled(!activate);
-		((EditText) findViewById(R.id.editTextTimeout)).setEnabled(!activate);
-		((EditText) findViewById(R.id.editTextTimeout)).setFocusable(!activate);
-		
-		if (activate) {
-			
-			Intent intent = new Intent(this, AntiTheftService.class);
-			intent.putExtra(
-					"ch.ethz.inf.vs.android.siwehrli.antitheft.activate",
-					activate);
-			intent.putExtra(
-					"ch.ethz.inf.vs.android.siwehrli.antitheft.sensitivity",
-					sensitivity);
-			intent.putExtra(
-					"ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
-					timeout);
 
-			startService(intent);
+		// ((SeekBar)
+		// findViewById(R.id.seekBarSensitivity)).setEnabled(!activate);
+		// ((EditText)
+		// findViewById(R.id.editTextTimeout)).setEnabled(!activate);
+		// ((EditText)
+		// findViewById(R.id.editTextTimeout)).setFocusable(!activate);
+
+		if (activate) {
+			startAntiTheftService();
 		} else {
-			// cancel notification (if exists)
-			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-			mNotificationManager
-					.cancel(AntiTheftService.NOTIFICATION_ACTIVATED_ID);
+			stopAntiTheftService();
 		}
+	}
+
+	private void startAntiTheftService() {
+		Intent intent = new Intent(this, AntiTheftService.class);
+
+		intent.putExtra("ch.ethz.inf.vs.android.siwehrli.antitheft.activate",
+				activate);
+		intent.putExtra(
+				"ch.ethz.inf.vs.android.siwehrli.antitheft.sensitivity",
+				sensitivity);
+		intent.putExtra("ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
+				timeout);
+
+		startService(intent);
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		
+		if (!intent.getBooleanExtra("activate", ACTIVATE_DEFAULT)) {
+			stopAntiTheftService();
+		}
+	}
+
+	private void stopAntiTheftService() {
+		activate = false;
+		
+		Intent intent = new Intent(this, AntiTheftService.class);
+		
+		// cancel notification (if exists)
+		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotificationManager.cancel(AntiTheftService.NOTIFICATION_ACTIVATED_ID);
+
+		// adjust activate button
+		ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonActivate);
+		tb.setChecked(activate);
+		
+		// stop service
+		stopService(intent);
 	}
 }

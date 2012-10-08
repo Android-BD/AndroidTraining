@@ -8,32 +8,55 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.util.Log;
 
-public class AntiTheftService extends IntentService {
+public class AntiTheftService extends Service {
 	public static final int NOTIFICATION_ACTIVATED_ID = 1;
-		
-	private boolean activate = MainActivity.ACTIVATE_DEFAULT;
-	private int sensitivity =  MainActivity.SENSITIVITY_DEFAULT;
-	private int timeout =  MainActivity.TIMEOUT_DEFAULT;
 
-	/**
-	 * A constructor is required, and must call the super IntentService(String)
-	 * constructor with a name for the worker thread.
-	 */
-	public AntiTheftService() {
-		super("AntiTheftService");
+	private boolean activate = MainActivity.ACTIVATE_DEFAULT;
+	private int sensitivity = MainActivity.SENSITIVITY_DEFAULT;
+	private int timeout = MainActivity.TIMEOUT_DEFAULT;
+
+	private SensorEventListener listener;
+	private SensorManager sensorManager;
+	
+	private long lastSignificantSensorChange=-1;
+	private float[] lastValues;
+	
+	@Override
+	public void onCreate() {
+		listener = new SensorEventListener() {
+
+			@Override
+			public void onAccuracyChanged(Sensor sensor, int accuracy) {
+				
+			}
+
+			@Override
+			public void onSensorChanged(SensorEvent event) {
+				float[] values = event.values;
+				Log.d("Service", ""+values[0]);
+			}
+		};
+
+		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		Sensor sensor = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER)
+				.get(0);
+		sensorManager.registerListener(listener, sensor,
+				SensorManager.SENSOR_DELAY_NORMAL);
 	}
 
-	/**
-	 * The IntentService calls this method from the default worker thread with
-	 * the intent that started the service. When this method returns,
-	 * IntentService stops the service, as appropriate.
-	 */
 	@Override
-	protected void onHandleIntent(Intent intent) {
+	public int onStartCommand(Intent intent, int flags, int startId) {
 		this.activate = intent.getBooleanExtra(
-				"ch.ethz.inf.vs.android.siwehrli.antitheft.activate", MainActivity.ACTIVATE_DEFAULT);
+				"ch.ethz.inf.vs.android.siwehrli.antitheft.activate",
+				MainActivity.ACTIVATE_DEFAULT);
 		if (activate) {
 			// show notification
 			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -52,6 +75,9 @@ public class AntiTheftService extends IntentService {
 			CharSequence contentText = getResources().getString(
 					R.string.notification_comment);
 			Intent notificationIntent = new Intent(this, MainActivity.class);
+			notificationIntent.putExtra("activate", false);
+			notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+			
 			PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
 					notificationIntent, 0);
 
@@ -64,10 +90,26 @@ public class AntiTheftService extends IntentService {
 			// read configuration options out of intent
 			this.sensitivity = intent.getIntExtra(
 					"ch.ethz.inf.vs.android.siwehrli.antitheft.sensitivity",
-					 MainActivity.SENSITIVITY_DEFAULT);
+					MainActivity.SENSITIVITY_DEFAULT);
 			this.timeout = intent.getIntExtra(
 					"ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
-					 MainActivity.TIMEOUT_DEFAULT);
+					MainActivity.TIMEOUT_DEFAULT);
+			
+			// save current time for reference
 		}
+
+		// If we get killed, after returning from here, restart
+		return START_STICKY;
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		// We don't provide binding, so return null
+		return null;
+	}
+
+	@Override
+	public void onDestroy() {
+		sensorManager.unregisterListener(listener);
 	}
 }
