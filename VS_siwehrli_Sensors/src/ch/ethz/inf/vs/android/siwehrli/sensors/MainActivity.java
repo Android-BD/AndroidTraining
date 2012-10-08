@@ -2,6 +2,7 @@ package ch.ethz.inf.vs.android.siwehrli.sensors;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
