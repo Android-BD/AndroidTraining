@@ -6,13 +6,12 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;
+import android.content.Intent;
 import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.AdapterView.OnItemClickListener;
 
 public class MainActivity extends Activity {
@@ -26,20 +25,23 @@ public class MainActivity extends Activity {
         ListView sensorListView = (ListView) findViewById(R.id.sensorList);
         SensorManager mySensorManager =(SensorManager) getSystemService(SENSOR_SERVICE);
         List<Sensor> sensorList = mySensorManager.getSensorList(Sensor.TYPE_ALL);
-        ArrayList<String> sensText = new ArrayList<String>();
+        ArrayList<String> sensorText = new ArrayList<String>();
         for (Sensor sensor : sensorList) {
-			sensText.add(sensor.getName());
+			sensorText.add(sensor.getName());
 		}
         
-        sensorListView.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, sensText));
+        sensorListView.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, sensorText));
         
         sensorListView.setOnItemClickListener(new OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int position,
                     long id) {
+            	//create Intent to launch other Activity
+                Intent sensorDetails = new Intent(view.getContext(), SensorActivity.class);
                 
-                String item = ((TextView)view).getText().toString();
-                
-                Toast.makeText(getBaseContext(), "rhabarber", Toast.LENGTH_LONG).show();
+                //put in Argument
+                sensorDetails.putExtra("sensorId", position);
+                //switch to other Activity
+                startActivity(sensorDetails);
             }
         });
     }

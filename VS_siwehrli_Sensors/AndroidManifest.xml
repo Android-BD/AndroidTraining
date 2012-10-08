@@ -20,6 +20,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SensorActivity"
+            android:label="@string/title_activity_sensor" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.ethz.inf.vs.android.siwehrli.sensors.MainActivity" />
+        </activity>
     </application>
 
 </manifest>
