@@ -5,46 +5,71 @@
 
     <TextView
         android:id="@+id/sensorName"
-        android:layout_width="wrap_content"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
+        android:layout_alignLeft="@+id/sensorReadings"
         android:layout_alignParentTop="true"
-        android:layout_marginLeft="5dp"
-        android:layout_marginRight="5dp"
         android:text="@string/blank"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/sensorReadings"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/sensorName"
-        android:layout_alignRight="@+id/sensorName"
+        android:layout_alignParentLeft="true"
         android:layout_below="@+id/sensorName"
+        android:layout_marginLeft="8dp"
         android:text="@string/sensor_readings"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
-
-    <LinearLayout
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/value0Box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/sensorReadings"
+        android:layout_marginLeft="5dp"
+        android:layout_toRightOf="@+id/sensorReadings"
+        android:maxLines="1"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/value1Box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/value0Box"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/value0Box"
+        android:maxLines="1"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/value2Box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/value1Box"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/value1Box"
+        android:maxLines="1"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <SurfaceView
+        android:id="@+id/graphSurface"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/sensorReadings"
-        android:layout_centerHorizontal="true" >
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/graphDescriptionText" />
 
-        <ListView
-            android:id="@+id/valueDescriptionList"
-            android:layout_width="133dp"
-            android:layout_height="wrap_content" >
-
-        </ListView>
-
-        <ListView
-            android:id="@+id/valueList"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" >
-        </ListView>
-
-    </LinearLayout>
+    <TextView
+        android:id="@+id/graphDescriptionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/value2Box"
+        android:text="@string/graph_description"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
 
 </RelativeLayout>

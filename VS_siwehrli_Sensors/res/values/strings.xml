@@ -6,6 +6,14 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_sensor">SensorActivity</string>
     <string name="sensor_readings">Sensor readings:</string>
-    <string name="blank"/>
-
+    <string name="blank" />
+    <string name="title_activity_actuators">ActuatorsActivity</string>
+    <string name="actuator_string">Actuators Activity</string>
+    <string name="play_sound">Play sound</string>
+    <string name="accuracy_text">Accuracy:</string>
+    <string name="values_text">Values:</string>
+    <string name="button_vibrate">Vibrate</string>
+    <string name="graph_description">Graph of norm(values):</string>
+    
+    
 </resources>

@@ -2,6 +2,7 @@ package ch.ethz.inf.vs.android.siwehrli.sensors;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
@@ -51,4 +52,11 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.activity_main, menu);
         return true;
     }
+    
+    public void onActuatorButtonClick(View v)
+    {
+    	Intent actuatorsIntent = new Intent(this, ActuatorsActivity.class);
+    	startActivity(actuatorsIntent);
+    }
+    
 }

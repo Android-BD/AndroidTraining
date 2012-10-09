@@ -5,7 +5,8 @@
 
     <uses-sdk
         android:minSdkVersion="10"
-        android:targetSdkVersion="15" />
+        android:targetSdkVersion="10" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
         android:icon="@drawable/ic_launcher"
@@ -23,6 +24,13 @@
         <activity
             android:name=".SensorActivity"
             android:label="@string/title_activity_sensor" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.ethz.inf.vs.android.siwehrli.sensors.MainActivity" />
+        </activity>
+        <activity
+            android:name=".ActuatorsActivity"
+            android:label="@string/title_activity_actuators" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ch.ethz.inf.vs.android.siwehrli.sensors.MainActivity" />
