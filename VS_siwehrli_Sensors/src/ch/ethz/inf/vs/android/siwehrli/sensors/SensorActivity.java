@@ -1,8 +1,9 @@
 package ch.ethz.inf.vs.android.siwehrli.sensors;
 
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -14,7 +15,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.app.Activity;
 import android.content.Intent;
-import android.util.Log;
+import android.util.FloatMath;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
@@ -30,13 +31,24 @@ public class SensorActivity extends Activity {
 	private TextView value0Box;
 	private TextView value1Box;
 	private TextView value2Box;
+
+	// graph stuff
 	private SurfaceView graphSurface;
 	private SurfaceHolder surfaceViewHolder;
 	private Canvas graphCanvas;
-	private Bitmap graphBitmap;
 	private Paint graphPaint;
+	private Paint graphGridPaint;
+	private Paint graphGridLightPaint;
 	private long time;
-	
+	private float max;
+	private float divider;
+	private static float min_max = 10f;
+	private float scaleValue;
+	private float yZero;
+	private float value;
+	private static float leftBorder = 60f;
+	private LinkedList<Float> graphYValues;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -53,6 +65,12 @@ public class SensorActivity extends Activity {
 				value0Box.setText(Float.toString(event.values[0]));
 				value1Box.setText(Float.toString(event.values[1]));
 				value2Box.setText(Float.toString(event.values[2]));
+
+				// take norm of values vector and calculate average sensor value
+				value = ((divider - 1) / divider * value)
+						+ (FloatMath.sqrt(event.values[0] * event.values[0]
+								+ event.values[1] * event.values[1]
+								+ event.values[2] * event.values[2]) / divider);
 				drawCanvas();
 			}
 
@@ -62,22 +80,32 @@ public class SensorActivity extends Activity {
 				drawCanvas();
 			}
 		};
-		
-		time = SystemClock.currentThreadTimeMillis()-101;
-		
+
+		time = SystemClock.currentThreadTimeMillis() - 101;
+
 		// get GUI elements
 		sensorName = (TextView) findViewById(R.id.sensorName);
 		value0Box = (TextView) findViewById(R.id.value0Box);
 		value1Box = (TextView) findViewById(R.id.value1Box);
 		value2Box = (TextView) findViewById(R.id.value2Box);
 
-		//graph Stuff
+		// graph Stuff
 		graphSurface = (SurfaceView) findViewById(R.id.graphSurface);
 		surfaceViewHolder = graphSurface.getHolder();
-		
+
 		graphPaint = new Paint();
-	    graphPaint.setColor(Color.BLUE);
-	    graphPaint.setStrokeWidth(3);
+		graphPaint.setColor(Color.BLUE);
+		graphPaint.setStrokeWidth(3);
+		graphGridPaint = new Paint(graphPaint);
+		graphGridPaint.setColor(Color.BLACK);
+		graphGridPaint.setTextSize(20f);
+		graphGridLightPaint = new Paint(graphGridPaint);
+		graphGridLightPaint.setStrokeWidth(1f);
+
+		max = min_max;
+		divider = 1;
+		scaleValue = 0f;
+		graphYValues = new LinkedList<Float>();
 
 		// get sensor index back
 		Intent startIntent = getIntent();
@@ -103,36 +131,128 @@ public class SensorActivity extends Activity {
 		mySensorManager.registerListener(mySensorListener, selectedSensor,
 				SensorManager.SENSOR_DELAY_FASTEST);
 	}
-	
-	
-	//Draw Logic
-	public void drawCanvas()
-	{
-		//Fix to 30fps
-		if((SystemClock.currentThreadTimeMillis()-time) > 33){
-			
+
+	// Draw Logic
+	public void drawCanvas() {
+		// Fix to 30fps
+		if ((SystemClock.currentThreadTimeMillis() - time) > 33) {
 			graphCanvas = surfaceViewHolder.lockCanvas();
-			if(graphCanvas!=null)
-			{
+			if (graphCanvas != null) {
+				// add value to be drawn
+				graphYValues.addFirst(value);
+				// reset divider --> new value
+				divider = 1;
+
+				// remove old points
+				if (graphYValues.size() > (graphCanvas.getWidth() - leftBorder) / 2) {
+					graphYValues.removeLast();
+				}
+
 				drawGraph();
+
+				// force canvas to be drawn
 				surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
 			}
 			time = SystemClock.currentThreadTimeMillis();
 		}
-		else
-		{
-			Log.d("bla","early draw call");
-		}
 	}
-	
-	public void drawGraph()
-	{
+
+	public void drawGraph() {
+
+		yZero = (float) graphCanvas.getHeight() - 20;
+
+		// draw graph grid
+		// set background
 		graphCanvas.drawColor(Color.WHITE);
-		graphCanvas.drawLine(20f, 0f, 20f, (float) graphCanvas.getHeight(),graphPaint);
-		graphCanvas.drawLine(20f, (float) graphCanvas.getHeight()-20, (float) graphCanvas.getWidth(), (float) graphCanvas.getHeight()-20,graphPaint);
+
+		// draw vertical line
+		graphCanvas.drawLine(leftBorder, 0f, leftBorder, (float) graphCanvas.getHeight(),
+				graphGridPaint);
+
+		// draw base horizontal line
+		graphCanvas.drawLine(leftBorder, yZero, (float) graphCanvas.getWidth(), yZero,
+				graphGridPaint);
+		// add number to line
+		graphCanvas.drawText("0", 15f, (float) graphCanvas.getHeight() - 12,
+				graphGridPaint);
+
+		// draw top scale horizontal line
+		float top_scale = Math.round((max * 0.95f)/10)*10;
+		if (top_scale < 10) {
+			top_scale = 10f;
+		}
+		graphCanvas.drawLine(leftBorder, yZero - (top_scale * scaleValue),
+				(float) graphCanvas.getWidth(), yZero
+						- (top_scale * scaleValue), graphGridLightPaint);
+
+		// add number to line
+		graphCanvas.drawText("" + top_scale, 1f, yZero
+				- (top_scale * scaleValue - 20), graphGridPaint);
+
+		// draw mid scale horizontal line
+		float mid_scale = top_scale/2;
+		graphCanvas.drawLine(leftBorder, yZero - (mid_scale * scaleValue),
+				(float) graphCanvas.getWidth(), yZero
+						- (mid_scale * scaleValue), graphGridLightPaint);
+
+		// add number to line
+		graphCanvas.drawText("" + mid_scale, 1f, yZero
+				- (mid_scale * scaleValue - 10), graphGridPaint);
+
+		// draw bot scale horizontal line
+		float bot_scale = top_scale/4;
+		graphCanvas.drawLine(leftBorder, yZero - (bot_scale * scaleValue),
+				(float) graphCanvas.getWidth(), yZero
+						- (bot_scale * scaleValue), graphGridLightPaint);
+
+		// add number to line
+		graphCanvas.drawText("" + bot_scale, 1f, yZero
+				- (bot_scale * scaleValue - 10), graphGridPaint);
+
+		// draw upper scale horizontal line
+		float upper_scale = 3*top_scale/4;
+		graphCanvas.drawLine(leftBorder, yZero - (upper_scale * scaleValue),
+				(float) graphCanvas.getWidth(), yZero
+						- (upper_scale * scaleValue), graphGridLightPaint);
+
+		// add number to line
+		graphCanvas.drawText("" + upper_scale, 1f, yZero
+				- (upper_scale * scaleValue - 10), graphGridPaint);
+
+		// draw top horizontal line
+		graphCanvas.drawLine(leftBorder, 1f, (float) graphCanvas.getWidth(), 1f,
+				graphGridPaint);
+		// add number to line
+		graphCanvas.drawText("Max: " + max, leftBorder+2f, 22f, graphGridPaint);
+
+		Iterator<Float> valuesIterator = graphYValues.iterator();
+
+		// fill values array, find max
+		float[] values = new float[2 * graphYValues.size()];
+		int i = 0;
+
+		max = min_max;
+
+		float tmp;
+		// prepare values array and find next max
+		while (valuesIterator.hasNext()) {
+			tmp = valuesIterator.next();
+			values[i] = graphCanvas.getWidth() - i;
+			values[i + 1] = yZero - (tmp * scaleValue);
+			if (tmp > max) {
+				max = tmp;
+			}
+			i = i + 2;
+		}
+
+		// determine next scaleValue
+		float drawHeigth = (float) graphCanvas.getHeight() - 20;
+		scaleValue = drawHeigth / max;
+
+		// draw points
+		graphCanvas.drawPoints(values, graphPaint);
 	}
-	
-	
+
 	@Override
 	protected void onPause() {
 		mySensorManager.unregisterListener(mySensorListener);

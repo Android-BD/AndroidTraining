@@ -13,5 +13,7 @@
     <string name="accuracy_text">Accuracy:</string>
     <string name="values_text">Values:</string>
     <string name="button_vibrate">Vibrate</string>
+    <string name="graph_description">Graph of norm(values):</string>
+    
     
 </resources>
