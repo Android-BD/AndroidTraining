@@ -5,8 +5,10 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -21,35 +23,104 @@ public class AntiTheftService extends Service {
 
 	private boolean activate = MainActivity.ACTIVATE_DEFAULT;
 	private int sensitivity = MainActivity.SENSITIVITY_DEFAULT;
-	private int timeout = MainActivity.TIMEOUT_DEFAULT;
+	private int timeout = MainActivity.TIMEOUT_DEFAULT; // in seconds!
 
 	private SensorEventListener listener;
 	private SensorManager sensorManager;
+	private Sensor sensor;
+	private BroadcastReceiver receiver;
+
+	private int unsigCounter = 0;
+	private static final int UNSIG_COUNTER_THRESHHOLD = 10;
+	private static final double CHANGE_100_PERCENT = 4; // defined by
+														// examination of
+														// average sensor
+														// values
+	private static final long ACCIDENTIAL_MOVEMENT_MAX_TIME = 5000; // arbitrarily
+																	// defined
+																	// by
+																	// exercise
+																	// sheet
+	private long lastUnsignificantSensorChange = 0;
+	private long lastCheckpoint = 0;
+	private float[] lastValues = { 0, 0, 0 };
 	
-	private long lastSignificantSensorChange=-1;
-	private float[] lastValues;
-	
+	private boolean timeoutStarted = false;
+	private long timeoutStartTime;
+
 	@Override
 	public void onCreate() {
+		// initialize sensor
+		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		sensor = sensorManager.getSensorList(
+				Sensor.TYPE_ACCELEROMETER).get(0);
+
 		listener = new SensorEventListener() {
 
 			@Override
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
-				
+
 			}
 
 			@Override
 			public void onSensorChanged(SensorEvent event) {
+				long now = System.currentTimeMillis();
+
+				// calculate the norm of the relative change of 3 component
+				// sensor data
 				float[] values = event.values;
-				Log.d("Service", ""+values[0]);
+				double change = Math.pow(values[0] - lastValues[0], 2)
+						+ Math.pow(values[1] - lastValues[1], 2)
+						+ Math.pow(values[2] - lastValues[2], 2);
+				change = Math.sqrt(change);
+
+				// check if change is not significant (dependent on sensitivity
+				// settings)
+				boolean sig = true;
+				if (change < (double) (100 - sensitivity) / 100d
+						* CHANGE_100_PERCENT) { // change is not significant
+					lastUnsignificantSensorChange = now;
+					sig = false;
+
+					if (unsigCounter < UNSIG_COUNTER_THRESHHOLD) {
+						unsigCounter++;
+					} else {
+						lastCheckpoint = lastUnsignificantSensorChange;
+						unsigCounter = 0;
+					}
+				}
+
+				// check if movement is more then an accidential movement (more
+				// than 5 seconds movement)
+				if (Math.abs(lastCheckpoint - now) > ACCIDENTIAL_MOVEMENT_MAX_TIME) {
+					Log.d("AntiTheftService", "START TIMEOUT because delta = "
+							+ Math.abs(lastCheckpoint - now)+" ------------------------------------------");
+					startTimeout(now);
+				}
+				
+				checkTimeout(now);
+
+				lastValues = values;
+				Log.d("AntiTheftService", change + "   Significant: " + sig);
+
 			}
 		};
+		
+		receiver = new BroadcastReceiver() {
 
-		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		Sensor sensor = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER)
-				.get(0);
-		sensorManager.registerListener(listener, sensor,
-				SensorManager.SENSOR_DELAY_NORMAL);
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				//sensorManager.unregisterListener(listener);
+				sensorManager.registerListener(listener, sensor,
+						SensorManager.SENSOR_DELAY_NORMAL);
+			}
+
+		};
+
+		// register broadcastreceiver for screen changes
+		IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+		filter.addAction(Intent.ACTION_SCREEN_OFF);
+		registerReceiver(receiver, filter);
 	}
 
 	@Override
@@ -58,6 +129,10 @@ public class AntiTheftService extends Service {
 				"ch.ethz.inf.vs.android.siwehrli.antitheft.activate",
 				MainActivity.ACTIVATE_DEFAULT);
 		if (activate) {
+			// start sensor
+			sensorManager.registerListener(listener, sensor,
+					SensorManager.SENSOR_DELAY_NORMAL);
+
 			// show notification
 			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -77,7 +152,7 @@ public class AntiTheftService extends Service {
 			Intent notificationIntent = new Intent(this, MainActivity.class);
 			notificationIntent.putExtra("activate", false);
 			notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-			
+
 			PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
 					notificationIntent, 0);
 
@@ -94,7 +169,7 @@ public class AntiTheftService extends Service {
 			this.timeout = intent.getIntExtra(
 					"ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
 					MainActivity.TIMEOUT_DEFAULT);
-			
+
 			// save current time for reference
 		}
 
@@ -111,5 +186,24 @@ public class AntiTheftService extends Service {
 	@Override
 	public void onDestroy() {
 		sensorManager.unregisterListener(listener);
+	}
+	
+	private void startTimeout(long now)
+	{
+		this.timeoutStarted=true;
+		this.timeoutStartTime=now;
+	}
+	
+	private void startAlarm()
+	{
+		
+	}
+	
+	private void checkTimeout(long now)
+	{
+		if(Math.abs(now-this.timeoutStartTime)>this.timeout)
+		{
+			this.startAlarm();
+		}
 	}
 }

@@ -71,6 +71,15 @@ public class MainActivity extends Activity {
 		}
 	}
 
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+
+		if (!intent.getBooleanExtra("activate", ACTIVATE_DEFAULT)) {
+			stopAntiTheftService();
+		}
+	}
+
 	private void startAntiTheftService() {
 		Intent intent = new Intent(this, AntiTheftService.class);
 
@@ -84,21 +93,12 @@ public class MainActivity extends Activity {
 
 		startService(intent);
 	}
-	
-	@Override
-	protected void onNewIntent(Intent intent) {
-		super.onNewIntent(intent);
-		
-		if (!intent.getBooleanExtra("activate", ACTIVATE_DEFAULT)) {
-			stopAntiTheftService();
-		}
-	}
 
 	private void stopAntiTheftService() {
 		activate = false;
-		
+
 		Intent intent = new Intent(this, AntiTheftService.class);
-		
+
 		// cancel notification (if exists)
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancel(AntiTheftService.NOTIFICATION_ACTIVATED_ID);
@@ -106,15 +106,15 @@ public class MainActivity extends Activity {
 		// adjust activate button
 		ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonActivate);
 		tb.setChecked(activate);
-		
+
 		// stop service
 		stopService(intent);
 	}
-	
+
 	@Override
 	protected void onPause() {
 		super.onPause();
-		
+
 		// save settings
 		SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
 				MODE_PRIVATE);
