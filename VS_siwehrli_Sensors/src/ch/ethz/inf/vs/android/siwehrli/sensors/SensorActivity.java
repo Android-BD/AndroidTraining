@@ -5,6 +5,7 @@ import java.util.List;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -33,6 +34,7 @@ public class SensorActivity extends Activity {
 	private SurfaceHolder surfaceViewHolder;
 	private Canvas graphCanvas;
 	private Bitmap graphBitmap;
+	private Paint graphPaint;
 	private long time;
 	
 	@Override
@@ -69,9 +71,13 @@ public class SensorActivity extends Activity {
 		value1Box = (TextView) findViewById(R.id.value1Box);
 		value2Box = (TextView) findViewById(R.id.value2Box);
 
-		// CONTINUE HERE
+		//graph Stuff
 		graphSurface = (SurfaceView) findViewById(R.id.graphSurface);
 		surfaceViewHolder = graphSurface.getHolder();
+		
+		graphPaint = new Paint();
+	    graphPaint.setColor(Color.BLUE);
+	    graphPaint.setStrokeWidth(3);
 
 		// get sensor index back
 		Intent startIntent = getIntent();
@@ -98,19 +104,20 @@ public class SensorActivity extends Activity {
 				SensorManager.SENSOR_DELAY_FASTEST);
 	}
 	
+	
+	//Draw Logic
 	public void drawCanvas()
 	{
-		if((SystemClock.currentThreadTimeMillis()-time) > 100){
+		//Fix to 30fps
+		if((SystemClock.currentThreadTimeMillis()-time) > 33){
+			
 			graphCanvas = surfaceViewHolder.lockCanvas();
-			if (graphCanvas != null) {
-				graphCanvas.drawColor(Color.GREEN);
-				
+			if(graphCanvas!=null)
+			{
+				drawGraph();
 				surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
-				time = SystemClock.currentThreadTimeMillis();
 			}
-			else{
-				Log.d("bla","null canvas!1");
-			}
+			time = SystemClock.currentThreadTimeMillis();
 		}
 		else
 		{
@@ -118,10 +125,18 @@ public class SensorActivity extends Activity {
 		}
 	}
 	
+	public void drawGraph()
+	{
+		graphCanvas.drawColor(Color.WHITE);
+		graphCanvas.drawLine(20f, 0f, 20f, (float) graphCanvas.getHeight(),graphPaint);
+		graphCanvas.drawLine(20f, (float) graphCanvas.getHeight()-20, (float) graphCanvas.getWidth(), (float) graphCanvas.getHeight()-20,graphPaint);
+	}
+	
+	
 	@Override
 	protected void onPause() {
 		mySensorManager.unregisterListener(mySensorListener);
-		super.onStop();
+		super.onPause();
 	}
 
 	@Override
