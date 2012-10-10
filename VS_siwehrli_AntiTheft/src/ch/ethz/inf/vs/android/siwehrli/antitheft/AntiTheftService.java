@@ -225,7 +225,9 @@ public class AntiTheftService extends Service {
 			if (this.inform) {
 				SmsManager sm = SmsManager.getDefault();
 				// here is where the destination of the text should go
-				sm.sendTextMessage(phoneNumber, null, getResources().getString(R.string.inform_message), null, null);
+				sm.sendTextMessage(phoneNumber, null,
+						getResources().getString(R.string.inform_message),
+						null, null);
 			}
 
 			Log.d("AntiTheftService", "ALARM STARTED");

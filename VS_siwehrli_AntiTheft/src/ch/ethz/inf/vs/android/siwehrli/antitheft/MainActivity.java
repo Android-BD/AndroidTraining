@@ -102,7 +102,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	public void onUpdateSettings(View view) {
+	public voihd onUpdateSettings(View view) {
 		Log.d("Main", "Settings read and updated to local variables");
 		sensitivity = ((SeekBar) findViewById(R.id.seekBarSensitivity))
 				.getProgress();
@@ -117,6 +117,8 @@ public class MainActivity extends Activity {
 		inform = ((CheckBox) findViewById(R.id.checkBoxInform)).isChecked();
 		phoneNumber = ((EditText) findViewById(R.id.editTextPhoneNumber))
 				.getText().toString();
+		if(phoneNumber.equals("") || phoneNumber.equals(PHONE_NUMBER_DEFAULT))
+			inform = false;
 	}
 
 	@Override

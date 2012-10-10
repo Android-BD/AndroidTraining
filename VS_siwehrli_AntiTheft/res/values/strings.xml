@@ -15,7 +15,7 @@
     <string name="ticker_text">Listening for the theft...</string>
     <string name="notification_comment">Click here to stop me listening</string>
     <string name="inform_friend">Inform a friend:</string>
-    <string name="no_friend">nobody</string>
+    <string name="no_friend">phone number</string>
     <string name="inform_message">Somebody have the phone of your friend stolen!!!</string>
 
 </resources>
