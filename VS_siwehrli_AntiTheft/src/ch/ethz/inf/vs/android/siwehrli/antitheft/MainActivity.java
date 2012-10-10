@@ -102,7 +102,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	public voihd onUpdateSettings(View view) {
+	public void onUpdateSettings(View view) {
 		Log.d("Main", "Settings read and updated to local variables");
 		sensitivity = ((SeekBar) findViewById(R.id.seekBarSensitivity))
 				.getProgress();
