@@ -22,17 +22,24 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        
+        //set up List View
         ListView sensorListView = (ListView) findViewById(R.id.sensorList);
+        
+        //get sensors
         SensorManager mySensorManager =(SensorManager) getSystemService(SENSOR_SERVICE);
         List<Sensor> sensorList = mySensorManager.getSensorList(Sensor.TYPE_ALL);
+        
+        //build the list of strings for the items in list view
         ArrayList<String> sensorText = new ArrayList<String>();
         for (Sensor sensor : sensorList) {
 			sensorText.add(sensor.getName());
 		}
         
+        //add the strings
         sensorListView.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, sensorText));
         
+        
+        //listen to clicks on items in the list view
         sensorListView.setOnItemClickListener(new OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int position,
                     long id) {

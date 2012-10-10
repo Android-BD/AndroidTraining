@@ -24,10 +24,13 @@ import android.view.SurfaceView;
 import android.widget.TextView;
 
 public class SensorActivity extends Activity {
-
+	
+	//sensor stuff
 	private Sensor selectedSensor;
 	private SensorManager mySensorManager;
 	private SensorEventListener mySensorListener;
+	
+	//other gui elements
 	private TextView sensorName;
 	private TextView value0Box;
 	private TextView value1Box;
@@ -62,6 +65,7 @@ public class SensorActivity extends Activity {
 		mySensorListener = new SensorEventListener() {
 
 			public void onSensorChanged(SensorEvent event) {
+				//write name and sensor values in the textboxes
 				sensorName.setText(selectedSensor.getName());
 				value0Box.setText(Float.toString(event.values[0]));
 				value1Box.setText(Float.toString(event.values[1]));
@@ -125,6 +129,7 @@ public class SensorActivity extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+		//register listener again and restart drawing thread
 		mySensorManager.registerListener(mySensorListener, selectedSensor,
 				SensorManager.SENSOR_DELAY_FASTEST);
 		drawThread = new DrawThread();
@@ -133,6 +138,7 @@ public class SensorActivity extends Activity {
 
 	// Draw Logic
 	public void drawCanvas() {
+		//get canvas to draw on
 		graphCanvas = surfaceViewHolder.lockCanvas();
 		if (graphCanvas != null) {
 			// add value to be drawn
@@ -154,7 +160,10 @@ public class SensorActivity extends Activity {
 	}
 
 	public void drawGraph() {
-
+		//graph plotting logic
+		
+		
+		
 		yZero = (float) graphCanvas.getHeight() - 20;
 
 		// draw graph grid
@@ -227,7 +236,8 @@ public class SensorActivity extends Activity {
 		// fill values array, find max
 		float[] values = new float[2 * graphYValues.size()];
 		int i = 0;
-
+		
+		//reset maximum
 		max = min_max;
 
 		float tmp;
@@ -253,6 +263,7 @@ public class SensorActivity extends Activity {
 	@Override
 	protected void onPause() {
 		super.onPause();
+		//stop listening on sensor when paused and stop the drawing thread
 		mySensorManager.unregisterListener(mySensorListener);
 		drawThread.running = false;
 	}

@@ -23,20 +23,22 @@ public class ActuatorsActivity extends Activity {
         return true;
     }
     
-    
+    //gets executed when the play sound button is clicked
     public void onPlaySoundButtonClick (View v){
+    	//use media player to play the sound
     	MediaPlayer mp = MediaPlayer.create(this, R.raw.sentry_mode);
     	mp.setVolume(1.0f, 1.0f);
     	mp.start();
     }
     
+    //gets executed when the vibrate button is pressed
     public void onVibrateButtonClick (View v){
     	SeekBar seeker = (SeekBar) findViewById(R.id.vibrateLengthBar);
     	int duration = seeker.getProgress(); //saves current seeker position into duration
     	
     	Vibrator vib = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-    	long[] pattern = { 0, duration }; //uses duration within this simple pattern (idle for 0, vibrate for 'duration')
-    	vib.vibrate(pattern, -1);
+    	long[] pattern = { 0, duration }; //0 idle time, duration long vibration
+    	vib.vibrate(pattern, -1);//vibrate
     }
     
     
