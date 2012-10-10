@@ -27,7 +27,7 @@ public class AntiTheftService extends Service {
 	private Sensor sensor;
 
 	private int unsigCounter = 0;
-	private static final int UNSIG_COUNTER_THRESHHOLD = 10;
+	private static final int UNSIG_COUNTER_THRESHHOLD = 20;
 	private static final double CHANGE_100_PERCENT = 4; // defined by
 														// examination of
 														// average sensor
@@ -48,12 +48,10 @@ public class AntiTheftService extends Service {
 	private final class MySensorEventListener implements SensorEventListener {
 		private float lv1 = 0, lv2 = 0, lv3 = 0;
 
-		@Override
 		public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
 		}
 
-		@Override
 		public void onSensorChanged(SensorEvent event) {
 
 			long now = System.currentTimeMillis();
@@ -83,6 +81,10 @@ public class AntiTheftService extends Service {
 						lastCheckpoint = lastUnsignificantSensorChange;
 						unsigCounter = 0;
 					}
+				}
+				else
+				{
+					unsigCounter = 0;
 				}
 
 				// check if movement is more then an accidential movement

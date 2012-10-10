@@ -36,9 +36,12 @@ public class MainActivity extends Activity {
 	private boolean activate = ACTIVATE_DEFAULT;
 	private int sensitivity = SENSITIVITY_DEFAULT;
 	private int timeout = TIMEOUT_DEFAULT;
+	
+	private SeekBar bar;
 
 	// graph drawer
 	private GraphDrawer graphDrawer;
+	private DrawThread drawThread;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -55,7 +58,7 @@ public class MainActivity extends Activity {
 		// set setting values to view components
 		ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonActivate);
 		tb.setChecked(activate);
-		SeekBar bar = (SeekBar) findViewById(R.id.seekBarSensitivity);
+		bar = (SeekBar) findViewById(R.id.seekBarSensitivity);
 		bar.setProgress(sensitivity);
 		EditText editText = (EditText) findViewById(R.id.editTextTimeout);
 		editText.setHint(timeout + " "
@@ -63,6 +66,7 @@ public class MainActivity extends Activity {
 
 		this.graphDrawer = new GraphDrawer(
 				(SurfaceView) findViewById(R.id.graph_surface));
+		this.drawThread = new DrawThread();
 	}
 
 	@Override
@@ -154,12 +158,27 @@ public class MainActivity extends Activity {
 		editor.putInt("sensitivity", sensitivity);
 		editor.putInt("timeout", timeout);
 		editor.commit(); // Commit changes to file!!!
+
+		// Graph Stuff
+		graphDrawer.mySensorManager
+				.unregisterListener(graphDrawer.mySensorListener);
+		drawThread.running = false;
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		// Graph Stuff
+		graphDrawer.mySensorManager.registerListener(
+				graphDrawer.mySensorListener, graphDrawer.sensor,
+				SensorManager.SENSOR_DELAY_FASTEST);
+		drawThread = new DrawThread();
+		drawThread.start();
 	}
 
 	/**
 	 * This inner class encapsulates the hole logic to draw the graph for the
 	 * sensor values.
-	 * FOR FREDI: You can calculate the Threshhold by calling AnitTheftService.calculateNormThreshhold(sensitivity)
 	 * 
 	 * @author Frederik
 	 * 
@@ -175,7 +194,7 @@ public class MainActivity extends Activity {
 		private Paint graphPaint;
 		private Paint graphGridPaint;
 		private Paint graphGridLightPaint;
-		private long time;
+		private Paint graphThresholdPaint;
 		private float max;
 		private float divider;
 		private static final float min_max = 10f;
@@ -184,22 +203,31 @@ public class MainActivity extends Activity {
 		private float value;
 		private static final float leftBorder = 60f;
 		private LinkedList<Float> graphYValues;
-		
+		private float lv1 = 0, lv2 = 0, lv3 = 0;
+
 		GraphDrawer(SurfaceView surface) {
 			mySensorListener = new SensorEventListener() {
 
 				public void onSensorChanged(SensorEvent event) {
 					// take norm of values vector and calculate average sensor
 					// value
+
+					float v1 = event.values[0];
+					float v2 = event.values[1];
+					float v3 = event.values[2];
+
+					float change = (v1 - lv1) * (v1 - lv1) + (v2 - lv2)
+							* (v2 - lv2) + (v3 - lv3) * (v3 - lv3);
+					change = FloatMath.sqrt(change);
+
 					value = ((divider - 1) / divider * value)
-							+ (FloatMath.sqrt(event.values[0] * event.values[0]
-									+ event.values[1] * event.values[1]
-									+ event.values[2] * event.values[2]) / divider);
-					drawCanvas();
+							+ (change / divider);
+					lv1 = v1;
+					lv2 = v2;
+					lv3 = v3;
 				}
 
 				public void onAccuracyChanged(Sensor sensor, int accuracy) {
-					drawCanvas();
 				}
 			};
 
@@ -211,8 +239,6 @@ public class MainActivity extends Activity {
 			// start sensor
 			mySensorManager.registerListener(mySensorListener, sensor,
 					SensorManager.SENSOR_DELAY_NORMAL);
-
-			time = SystemClock.currentThreadTimeMillis() - 101;
 
 			// graph Stuff
 			graphSurface = surface;
@@ -226,6 +252,8 @@ public class MainActivity extends Activity {
 			graphGridPaint.setTextSize(20f);
 			graphGridLightPaint = new Paint(graphGridPaint);
 			graphGridLightPaint.setStrokeWidth(1f);
+			graphThresholdPaint = new Paint(graphGridPaint);
+			graphThresholdPaint.setColor(Color.RED);
 
 			max = min_max;
 			divider = 1;
@@ -236,26 +264,22 @@ public class MainActivity extends Activity {
 
 		// Draw Logic
 		public void drawCanvas() {
-			// Fix to 30fps
-			if ((SystemClock.currentThreadTimeMillis() - time) > 33) {
-				graphCanvas = surfaceViewHolder.lockCanvas();
-				if (graphCanvas != null) {
-					// add value to be drawn
-					graphYValues.addFirst(value);
-					// reset divider --> new value
-					divider = 1;
+			graphCanvas = surfaceViewHolder.lockCanvas();
+			if (graphCanvas != null) {
+				// add value to be drawn
+				graphYValues.addFirst(value);
+				// reset divider --> new value
+				divider = 1;
 
-					// remove old points
-					if (graphYValues.size() > (graphCanvas.getWidth() - leftBorder) / 2) {
-						graphYValues.removeLast();
-					}
-
-					drawGraph();
-
-					// force canvas to be drawn
-					surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
+				// remove old points
+				if (graphYValues.size() > (graphCanvas.getWidth() - leftBorder) / 4) {
+					graphYValues.removeLast();
 				}
-				time = SystemClock.currentThreadTimeMillis();
+
+				drawGraph();
+
+				// force canvas to be drawn
+				surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
 			}
 		}
 
@@ -270,6 +294,14 @@ public class MainActivity extends Activity {
 			// draw vertical line
 			graphCanvas.drawLine(leftBorder, 0f, leftBorder,
 					(float) graphCanvas.getHeight(), graphGridPaint);
+
+			// draw red Threshold line
+			float threshold = AntiTheftService
+					.calculateNormThreshhold(bar.getProgress());
+
+			graphCanvas.drawLine(leftBorder, yZero - (threshold * scaleValue),
+					(float) graphCanvas.getWidth(), yZero
+							- (threshold * scaleValue), graphThresholdPaint);
 
 			// draw base horizontal line
 			graphCanvas.drawLine(leftBorder, yZero,
@@ -332,7 +364,7 @@ public class MainActivity extends Activity {
 			Iterator<Float> valuesIterator = graphYValues.iterator();
 
 			// fill values array, find max
-			float[] values = new float[2 * graphYValues.size()];
+			float[] values = new float[4 * graphYValues.size()];
 			int i = 0;
 
 			max = min_max;
@@ -343,10 +375,12 @@ public class MainActivity extends Activity {
 				tmp = valuesIterator.next();
 				values[i] = graphCanvas.getWidth() - i;
 				values[i + 1] = yZero - (tmp * scaleValue);
+				values[i + 2] = graphCanvas.getWidth() - i;
+				values[i + 3] = yZero;
 				if (tmp > max) {
 					max = tmp;
 				}
-				i = i + 2;
+				i = i + 4;
 			}
 
 			// determine next scaleValue
@@ -354,7 +388,43 @@ public class MainActivity extends Activity {
 			scaleValue = drawHeigth / max;
 
 			// draw points
-			graphCanvas.drawPoints(values, graphPaint);
+			graphCanvas.drawLines(values, graphPaint);
+		}
+	}
+
+	// used for drawing on the SurfaceView
+	private class DrawThread extends Thread {
+
+		public Boolean running;
+
+		// used to fix to 30fps
+		private long sleepTime;
+		private long delay = 33;
+		private long beforeRender;
+
+		public DrawThread() {
+			running = false;
+		}
+
+		@Override
+		public void run() {
+			running = true;
+			while (running) {
+				beforeRender = SystemClock.currentThreadTimeMillis();
+
+				graphDrawer.drawCanvas();
+
+				sleepTime = delay
+						- (SystemClock.currentThreadTimeMillis() - beforeRender);
+
+				try {
+					// sleep until next frame
+					if (sleepTime > 0) {
+						Thread.sleep(sleepTime);
+					}
+				} catch (InterruptedException ex) {
+				}
+			}
 		}
 	}
 }

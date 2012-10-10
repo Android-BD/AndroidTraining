@@ -16,6 +16,7 @@ import android.os.SystemClock;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.FloatMath;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
@@ -39,7 +40,6 @@ public class SensorActivity extends Activity {
 	private Paint graphPaint;
 	private Paint graphGridPaint;
 	private Paint graphGridLightPaint;
-	private long time;
 	private float max;
 	private float divider;
 	private static float min_max = 10f;
@@ -48,6 +48,7 @@ public class SensorActivity extends Activity {
 	private float value;
 	private static float leftBorder = 60f;
 	private LinkedList<Float> graphYValues;
+	private DrawThread drawThread;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -71,17 +72,13 @@ public class SensorActivity extends Activity {
 						+ (FloatMath.sqrt(event.values[0] * event.values[0]
 								+ event.values[1] * event.values[1]
 								+ event.values[2] * event.values[2]) / divider);
-				drawCanvas();
 			}
 
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
 				selectedSensor = sensor;
 				sensorName.setText(selectedSensor.getName());
-				drawCanvas();
 			}
 		};
-
-		time = SystemClock.currentThreadTimeMillis() - 101;
 
 		// get GUI elements
 		sensorName = (TextView) findViewById(R.id.sensorName);
@@ -130,30 +127,29 @@ public class SensorActivity extends Activity {
 		super.onResume();
 		mySensorManager.registerListener(mySensorListener, selectedSensor,
 				SensorManager.SENSOR_DELAY_FASTEST);
+		drawThread = new DrawThread();
+		drawThread.start();
 	}
 
 	// Draw Logic
 	public void drawCanvas() {
-		// Fix to 30fps
-		if ((SystemClock.currentThreadTimeMillis() - time) > 33) {
-			graphCanvas = surfaceViewHolder.lockCanvas();
-			if (graphCanvas != null) {
-				// add value to be drawn
-				graphYValues.addFirst(value);
-				// reset divider --> new value
-				divider = 1;
+		graphCanvas = surfaceViewHolder.lockCanvas();
+		if (graphCanvas != null) {
+			// add value to be drawn
+			graphYValues.addFirst(value);
+			// reset divider --> new value
+			divider = 1;
 
-				// remove old points
-				if (graphYValues.size() > (graphCanvas.getWidth() - leftBorder) / 2) {
-					graphYValues.removeLast();
-				}
-
-				drawGraph();
-
-				// force canvas to be drawn
-				surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
+			// remove old points
+			if (graphYValues.size() > (graphCanvas.getWidth() - leftBorder) / 2) {
+				graphYValues.removeLast();
 			}
-			time = SystemClock.currentThreadTimeMillis();
+
+			drawGraph();
+
+			// force canvas to be drawn
+			surfaceViewHolder.unlockCanvasAndPost(graphCanvas);
+
 		}
 	}
 
@@ -166,18 +162,18 @@ public class SensorActivity extends Activity {
 		graphCanvas.drawColor(Color.WHITE);
 
 		// draw vertical line
-		graphCanvas.drawLine(leftBorder, 0f, leftBorder, (float) graphCanvas.getHeight(),
-				graphGridPaint);
+		graphCanvas.drawLine(leftBorder, 0f, leftBorder,
+				(float) graphCanvas.getHeight(), graphGridPaint);
 
 		// draw base horizontal line
-		graphCanvas.drawLine(leftBorder, yZero, (float) graphCanvas.getWidth(), yZero,
-				graphGridPaint);
+		graphCanvas.drawLine(leftBorder, yZero, (float) graphCanvas.getWidth(),
+				yZero, graphGridPaint);
 		// add number to line
 		graphCanvas.drawText("0", 15f, (float) graphCanvas.getHeight() - 12,
 				graphGridPaint);
 
 		// draw top scale horizontal line
-		float top_scale = Math.round((max * 0.95f)/10)*10;
+		float top_scale = Math.round((max * 0.95f) / 10) * 10;
 		if (top_scale < 10) {
 			top_scale = 10f;
 		}
@@ -190,7 +186,7 @@ public class SensorActivity extends Activity {
 				- (top_scale * scaleValue - 20), graphGridPaint);
 
 		// draw mid scale horizontal line
-		float mid_scale = top_scale/2;
+		float mid_scale = top_scale / 2;
 		graphCanvas.drawLine(leftBorder, yZero - (mid_scale * scaleValue),
 				(float) graphCanvas.getWidth(), yZero
 						- (mid_scale * scaleValue), graphGridLightPaint);
@@ -200,7 +196,7 @@ public class SensorActivity extends Activity {
 				- (mid_scale * scaleValue - 10), graphGridPaint);
 
 		// draw bot scale horizontal line
-		float bot_scale = top_scale/4;
+		float bot_scale = top_scale / 4;
 		graphCanvas.drawLine(leftBorder, yZero - (bot_scale * scaleValue),
 				(float) graphCanvas.getWidth(), yZero
 						- (bot_scale * scaleValue), graphGridLightPaint);
@@ -210,7 +206,7 @@ public class SensorActivity extends Activity {
 				- (bot_scale * scaleValue - 10), graphGridPaint);
 
 		// draw upper scale horizontal line
-		float upper_scale = 3*top_scale/4;
+		float upper_scale = 3 * top_scale / 4;
 		graphCanvas.drawLine(leftBorder, yZero - (upper_scale * scaleValue),
 				(float) graphCanvas.getWidth(), yZero
 						- (upper_scale * scaleValue), graphGridLightPaint);
@@ -220,10 +216,11 @@ public class SensorActivity extends Activity {
 				- (upper_scale * scaleValue - 10), graphGridPaint);
 
 		// draw top horizontal line
-		graphCanvas.drawLine(leftBorder, 1f, (float) graphCanvas.getWidth(), 1f,
-				graphGridPaint);
+		graphCanvas.drawLine(leftBorder, 1f, (float) graphCanvas.getWidth(),
+				1f, graphGridPaint);
 		// add number to line
-		graphCanvas.drawText("Max: " + max, leftBorder+2f, 22f, graphGridPaint);
+		graphCanvas.drawText("Max: " + max, leftBorder + 2f, 22f,
+				graphGridPaint);
 
 		Iterator<Float> valuesIterator = graphYValues.iterator();
 
@@ -255,8 +252,9 @@ public class SensorActivity extends Activity {
 
 	@Override
 	protected void onPause() {
-		mySensorManager.unregisterListener(mySensorListener);
 		super.onPause();
+		mySensorManager.unregisterListener(mySensorListener);
+		drawThread.running = false;
 	}
 
 	@Override
@@ -265,4 +263,41 @@ public class SensorActivity extends Activity {
 		super.onStop();
 	}
 
+	// used for drawing on the SurfaceView
+	private class DrawThread extends Thread {
+
+		public Boolean running;
+
+		// used to fix to 30fps
+		private long sleepTime;
+		private long delay = 33;
+		private long beforeRender;
+
+		public DrawThread() {
+			running = false;
+		}
+
+		@Override
+		public void run() {
+			running = true;
+			while (running) {
+				beforeRender = SystemClock.currentThreadTimeMillis();
+				Log.d("bla",""+SystemClock.currentThreadTimeMillis());
+				drawCanvas();
+				
+				sleepTime = delay
+						- (SystemClock.currentThreadTimeMillis() - beforeRender);
+
+				try {
+					// sleep until next frame
+					if (sleepTime > 0) {
+						Log.d("bla","sleeping for "+sleepTime);
+
+						Thread.sleep(sleepTime);
+					}
+				} catch (InterruptedException ex) {
+				}
+			}
+		}
+	}
 }
