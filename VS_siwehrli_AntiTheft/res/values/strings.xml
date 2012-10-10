@@ -6,13 +6,16 @@
     <string name="title_activity_main">AntiTheft</string>
     <string name="on_off_text">Arm this phone</string>
     <string name="settings">Settings</string>
-    <string name="sensitivity">Sensitivity</string>
+    <string name="sensitivity">Sensitivity:</string>
     <string name="low">low</string>
     <string name="high">high</string>
-    <string name="timeout">Timeout</string>
+    <string name="timeout">Timeout:</string>
     <string name="timeout_unit"> seconds</string>
     <string name="activate_toogle_button_text">Activate</string>
     <string name="ticker_text">Listening for the theft...</string>
     <string name="notification_comment">Click here to stop me listening</string>
+    <string name="inform_friend">Inform a friend:</string>
+    <string name="no_friend">nobody</string>
+    <string name="inform_message">Somebody have the phone of your friend stolen!!!</string>
 
 </resources>

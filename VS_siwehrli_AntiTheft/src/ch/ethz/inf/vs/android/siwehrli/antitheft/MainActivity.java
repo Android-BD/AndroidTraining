@@ -2,6 +2,7 @@ package ch.ethz.inf.vs.android.siwehrli.antitheft;
 
 import java.util.Iterator;
 import java.util.LinkedList;
+
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -18,10 +19,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.FloatMath;
+import android.util.Log;
 import android.view.Menu;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.ToggleButton;
@@ -32,11 +35,15 @@ public class MainActivity extends Activity {
 	public static final boolean ACTIVATE_DEFAULT = false;
 	public static final int SENSITIVITY_DEFAULT = 60;
 	public static final int TIMEOUT_DEFAULT = 5;
+	public static final boolean INFORM_DEFAULT = false;
+	public static final String PHONE_NUMBER_DEFAULT = "";
 
 	private boolean activate = ACTIVATE_DEFAULT;
 	private int sensitivity = SENSITIVITY_DEFAULT;
 	private int timeout = TIMEOUT_DEFAULT;
-	
+	private boolean inform = INFORM_DEFAULT;
+	private String phoneNumber = PHONE_NUMBER_DEFAULT;
+
 	private SeekBar bar;
 
 	// graph drawer
@@ -54,6 +61,8 @@ public class MainActivity extends Activity {
 		this.activate = settings.getBoolean("activate", ACTIVATE_DEFAULT);
 		this.sensitivity = settings.getInt("sensitivity", SENSITIVITY_DEFAULT);
 		this.timeout = settings.getInt("timeout", TIMEOUT_DEFAULT);
+		this.inform = settings.getBoolean("inform", INFORM_DEFAULT);
+		this.phoneNumber = settings.getString("phone_number", "");
 
 		// set setting values to view components
 		ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonActivate);
@@ -63,6 +72,13 @@ public class MainActivity extends Activity {
 		EditText editText = (EditText) findViewById(R.id.editTextTimeout);
 		editText.setHint(timeout + " "
 				+ getResources().getString(R.string.timeout_unit));
+		CheckBox cb = (CheckBox) findViewById(R.id.checkBoxInform);
+		cb.setSelected(this.inform);
+		EditText editText2 = (EditText) findViewById(R.id.editTextPhoneNumber);
+		if (phoneNumber.equals(PHONE_NUMBER_DEFAULT))
+			editText2.setHint(getResources().getString(R.string.no_friend));
+		else
+			editText2.setHint(phoneNumber);
 
 		this.graphDrawer = new GraphDrawer(
 				(SurfaceView) findViewById(R.id.graph_surface));
@@ -77,6 +93,17 @@ public class MainActivity extends Activity {
 
 	public void onClickActivate(View view) {
 		activate = ((ToggleButton) view).isChecked();
+		onUpdateSettings(view);
+
+		if (activate) {
+			startAntiTheftService();
+		} else {
+			stopAntiTheftService();
+		}
+	}
+
+	public void onUpdateSettings(View view) {
+		Log.d("Main", "Settings read and updated to local variables");
 		sensitivity = ((SeekBar) findViewById(R.id.seekBarSensitivity))
 				.getProgress();
 		try {
@@ -87,11 +114,9 @@ public class MainActivity extends Activity {
 
 		}
 
-		if (activate) {
-			startAntiTheftService();
-		} else {
-			stopAntiTheftService();
-		}
+		inform = ((CheckBox) findViewById(R.id.checkBoxInform)).isChecked();
+		phoneNumber = ((EditText) findViewById(R.id.editTextPhoneNumber))
+				.getText().toString();
 	}
 
 	@Override
@@ -113,6 +138,11 @@ public class MainActivity extends Activity {
 				sensitivity);
 		intent.putExtra("ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
 				timeout);
+		intent.putExtra("ch.ethz.inf.vs.android.siwehrli.antitheft.inform",
+				inform);
+		intent.putExtra(
+				"ch.ethz.inf.vs.android.siwehrli.antitheft.phone_number",
+				phoneNumber);
 
 		startService(intent);
 
@@ -157,6 +187,8 @@ public class MainActivity extends Activity {
 		editor.putBoolean("activate", activate);
 		editor.putInt("sensitivity", sensitivity);
 		editor.putInt("timeout", timeout);
+		editor.putBoolean("inform", inform);
+		editor.putString("phone_number", phoneNumber);
 		editor.commit(); // Commit changes to file!!!
 
 		// Graph Stuff
@@ -168,6 +200,7 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+
 		// Graph Stuff
 		graphDrawer.mySensorManager.registerListener(
 				graphDrawer.mySensorListener, graphDrawer.sensor,
@@ -296,8 +329,8 @@ public class MainActivity extends Activity {
 					(float) graphCanvas.getHeight(), graphGridPaint);
 
 			// draw red Threshold line
-			float threshold = AntiTheftService
-					.calculateNormThreshhold(bar.getProgress());
+			float threshold = AntiTheftService.calculateNormThreshhold(bar
+					.getProgress());
 
 			graphCanvas.drawLine(leftBorder, yZero - (threshold * scaleValue),
 					(float) graphCanvas.getWidth(), yZero

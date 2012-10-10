@@ -12,6 +12,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
+import android.telephony.SmsManager;
 import android.util.FloatMath;
 import android.util.Log;
 
@@ -21,6 +22,8 @@ public class AntiTheftService extends Service {
 	private boolean activate = MainActivity.ACTIVATE_DEFAULT;
 	private int sensitivity = MainActivity.SENSITIVITY_DEFAULT;
 	private int timeout = MainActivity.TIMEOUT_DEFAULT; // in seconds!
+	private boolean inform = MainActivity.INFORM_DEFAULT;
+	private String phoneNumber = MainActivity.PHONE_NUMBER_DEFAULT;
 
 	private SensorEventListener listener;
 	private SensorManager sensorManager;
@@ -71,7 +74,10 @@ public class AntiTheftService extends Service {
 				// check if change is not significant (dependent on
 				// sensitivity
 				// settings)
-				if (change < calculateNormThreshhold(sensitivity)) { // change is not significant
+				if (change < calculateNormThreshhold(sensitivity)) { // change
+																		// is
+																		// not
+																		// significant
 					lastUnsignificantSensorChange = now;
 					sig = false;
 
@@ -81,9 +87,7 @@ public class AntiTheftService extends Service {
 						lastCheckpoint = lastUnsignificantSensorChange;
 						unsigCounter = 0;
 					}
-				}
-				else
-				{
+				} else {
 					unsigCounter = 0;
 				}
 
@@ -92,7 +96,7 @@ public class AntiTheftService extends Service {
 				// than 5 seconds movement)
 				if (Math.abs(lastCheckpoint - now) > ACCIDENTIAL_MOVEMENT_MAX_TIME) {
 					startTimeout(now);
-					
+
 				}
 
 				checkTimeout(now);
@@ -100,7 +104,7 @@ public class AntiTheftService extends Service {
 				lv1 = v1;
 				lv2 = v2;
 				lv3 = v3;
-				
+
 				Log.d("AntiTheftService", change + "   Significant: " + sig);
 
 			} else {
@@ -168,6 +172,12 @@ public class AntiTheftService extends Service {
 			this.timeout = intent.getIntExtra(
 					"ch.ethz.inf.vs.android.siwehrli.antitheft.timeout",
 					MainActivity.TIMEOUT_DEFAULT);
+			this.inform = intent.getBooleanExtra(
+					"ch.ethz.inf.vs.android.siwehrli.antitheft.inform",
+					MainActivity.INFORM_DEFAULT);
+			// attention: phoneNumber is null if String no found
+			this.phoneNumber = intent
+					.getStringExtra("ch.ethz.inf.vs.android.siwehrli.antitheft.phone_number");
 		}
 
 		// If we get killed, after returning from here, restart
@@ -183,8 +193,8 @@ public class AntiTheftService extends Service {
 	@Override
 	public void onDestroy() {
 		sensorManager.unregisterListener(listener);
-		
-		if(alarmPlayer!=null)
+
+		if (alarmPlayer != null)
 			alarmPlayer.stop();
 	}
 
@@ -196,13 +206,13 @@ public class AntiTheftService extends Service {
 
 			this.timeoutStarted = true;
 			this.timeoutStartTime = now;
-			
+
 			Log.d("AntiTheftService", "TIMEOUT STARTED");
 		}
 	}
 
 	MediaPlayer alarmPlayer;
-	
+
 	private void startAlarm() {
 		if (!this.alarmStarted) {
 			alarmStarted = true;
@@ -210,19 +220,26 @@ public class AntiTheftService extends Service {
 			alarmPlayer.setVolume(1.0f, 1.0f);
 			alarmPlayer.setLooping(true);
 			alarmPlayer.start();
-			
+
+			// if required by settings, send sms to friend
+			if (this.inform) {
+				SmsManager sm = SmsManager.getDefault();
+				// here is where the destination of the text should go
+				sm.sendTextMessage(phoneNumber, null, getResources().getString(R.string.inform_message), null, null);
+			}
+
 			Log.d("AntiTheftService", "ALARM STARTED");
 		}
 	}
 
 	private void checkTimeout(long now) {
-		if (this.timeoutStarted && Math.abs(now - this.timeoutStartTime) > this.timeout*1000) {
+		if (this.timeoutStarted
+				&& Math.abs(now - this.timeoutStartTime) > this.timeout * 1000) {
 			this.startAlarm();
 		}
 	}
-	
-	public static float calculateNormThreshhold(int sensitivity)
-	{
-		return (float) ((float) (100 - sensitivity) / 100f* CHANGE_100_PERCENT);
+
+	public static float calculateNormThreshhold(int sensitivity) {
+		return (float) ((float) (100 - sensitivity) / 100f * CHANGE_100_PERCENT);
 	}
 }
