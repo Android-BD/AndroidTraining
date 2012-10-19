@@ -30,7 +30,7 @@ public class AntiTheftService extends Service {
 	private Sensor sensor;
 
 	private int unsigCounter = 0;
-	private static final int UNSIG_COUNTER_THRESHHOLD = 20;
+	private static final int UNSIG_COUNTER_THRESHHOLD = 5;
 	private static final double CHANGE_100_PERCENT = 4; // defined by
 														// examination of
 														// average sensor
