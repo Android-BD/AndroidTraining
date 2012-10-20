@@ -1,0 +1,12 @@
+<resources>
+
+    <string name="app_name">VS_siwehrli_REST</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_main">REST</string>
+    <string name="introduction_text">Obtain temperature information by...</string>
+    <string name="hand_made">hand-made http request</string>
+    <string name="library_made">apache library http request</string>
+    <string name="json_made">request returning json</string>
+
+</resources>
