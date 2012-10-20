@@ -8,5 +8,7 @@
     <string name="hand_made">hand-made http request</string>
     <string name="library_made">apache library http request</string>
     <string name="json_made">request returning json</string>
+    <string name="json_label">Value extracted from JSON response:</string>
+    <string name="no_value_set">-</string>
 
 </resources>
