@@ -12,4 +12,42 @@
         android:text="@string/button_get_temp"
         android:onClick="onGetTempButtonPressed" />
 
+    <TextView
+        android:id="@+id/resultTextBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/getTempButton"
+        android:layout_marginLeft="5dp"
+        android:layout_toRightOf="@+id/tempTextDesc"
+        android:maxLines="1"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/tempTextDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/getTempButton"
+        android:text="@string/temp_desc"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/rawResponseDescTextBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/tempTextDesc"
+        android:text="@string/rawXML_desc"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/rawXMLTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/rawResponseDescTextBox"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+
 </RelativeLayout>
