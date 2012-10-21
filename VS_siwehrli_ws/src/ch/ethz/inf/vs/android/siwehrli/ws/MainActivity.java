@@ -9,7 +9,6 @@ import org.ksoap2.transport.HttpTransportSE;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
@@ -94,7 +93,8 @@ public class MainActivity extends Activity {
 				rawXMLView.setText(rawXmlResponse);
 			} catch (NullPointerException e) {
 				//result was null, something went wrong, apologize
-				resultTextBox.setText("Soap call failed. Sorry");
+				resultTextBox.setText("no data");
+				rawXMLView.setText("Something went wrong. Sorry!");
 			}
 		}
 	}
