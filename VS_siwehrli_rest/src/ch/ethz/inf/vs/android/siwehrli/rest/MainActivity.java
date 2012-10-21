@@ -41,9 +41,9 @@ public class MainActivity extends Activity {
 		return true;
 	}
 
-	String host = "vslab.inf.ethz.ch";
-	String charset = "UTF8";
-	int port = 8081;
+	static String host = "vslab.inf.ethz.ch";
+	static String charset = "UTF8";
+	static int port = 8081;
 	String path = "/sunspots/Spot1/sensors/temperature";
 
 	public void onClickStartChartActivity(View view) {

@@ -1,6 +1,23 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/LinearLayout1"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" >
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <ToggleButton
+        android:id="@+id/toggleButtonActivate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="onClickActivate"
+        android:text="@string/toggle_button_name" />
+
+    <ImageView
+        android:id="@+id/chart_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/image_view_description"
+        android:scaleType="center"
+        android:src="@android:drawable/ic_popup_sync" />
 
-</RelativeLayout>
+</LinearLayout>
