@@ -1,5 +1,6 @@
 package ch.ethz.inf.vs.android.siwehrli.ws;
 
+//imports used for WS
 import org.ksoap2.SoapEnvelope;
 import org.ksoap2.serialization.SoapObject;
 import org.ksoap2.serialization.SoapSerializationEnvelope;
@@ -14,12 +15,14 @@ import android.view.View;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
-
+	
+	//WS strings
 	private static final String NAMESPACE = "http://webservices.vslecture.vs.inf.ethz.ch/";
 	private static final String METHOD_NAME = "getSpot";
 	private static final String URL = "http://vslab.inf.ethz.ch:80/SunSPOTWebServices/SunSPOTWebservice";
 	private static final String SOAP_ACTION = "http://vslab.inf.ethz.ch:80/SunSPOTWebServices/SunSPOTWebservice/getSpot";
 	
+	//Views to show results in
 	private TextView resultTextBox;
 	private TextView rawXMLView;
 
@@ -36,52 +39,63 @@ public class MainActivity extends Activity {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
 	}
-
+	
+	//Called when button pressed
 	public void onGetTempButtonPressed(View v) {
+		//create and execute asynchronous network task
 		String[] args = { NAMESPACE, METHOD_NAME, URL, SOAP_ACTION };
 		SoapTask myTask = new SoapTask();
 		myTask.execute(args);
 	}
-
+	
 	class SoapTask extends AsyncTask<String[], Void, SoapObject> {
-
+		
+		//stores the raw xml response
 		String rawXmlResponse;
 
 		protected SoapObject doInBackground(String[]... args) {
-			Log.d("bla", "trying to soap");
+			//build request
 			SoapObject request = new SoapObject(args[0][0], args[0][1]);
 			request.addProperty("id", "Spot3");
+			
+			//pack request into a soap envelope
 			SoapSerializationEnvelope mySoapEnvelope = new SoapSerializationEnvelope(
 					SoapEnvelope.VER10);
 			mySoapEnvelope.setOutputSoapObject(request);
-
+			
+			//send envelope over http
 			HttpTransportSE httpTransport = new HttpTransportSE(args[0][2]);
+			
+			//enable debug for raw xml response
 			httpTransport.debug = true;
-
+			
 			try {
+				//send envelope
 				httpTransport.call(args[0][3], mySoapEnvelope);
+				
+				//retrieve response
 				rawXmlResponse = httpTransport.responseDump;
-				Log.d("bla", "send");
 				SoapObject result = (SoapObject) mySoapEnvelope.getResponse();
-				Log.d("bla", "Response: " + result.toString());
+				
 				return result;
 			} catch (Exception e) {
-				Log.d("bla", e.toString());
-				Log.d("bla", "failed");
+				//will be thrown if no network, etc
 				return null;
 			}
 		}
 
 		protected void onPostExecute(SoapObject result) {
+			//gets executed by ui thread after networking is finished
 			try {
+				//retrieve temperature and set textView contents
 				String temp = result
 						.getPrimitivePropertyAsString("temperature");
 				resultTextBox.setText(temp);
 				rawXMLView.setText(rawXmlResponse);
 			} catch (NullPointerException e) {
+				//result was null, something went wrong, apologize
 				resultTextBox.setText("Soap call failed. Sorry");
 			}
-
 		}
 	}
 }
