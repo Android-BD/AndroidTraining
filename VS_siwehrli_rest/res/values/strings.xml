@@ -5,10 +5,13 @@
     <string name="menu_settings">Settings</string>
     <string name="title_activity_main">REST</string>
     <string name="introduction_text">Obtain temperature information by...</string>
-    <string name="hand_made">hand-made http request</string>
-    <string name="library_made">apache library http request</string>
-    <string name="json_made">request returning json</string>
+    <string name="hand_made">hand-made</string>
+    <string name="library_made">library</string>
+    <string name="json_made">json</string>
     <string name="json_label">Value extracted from JSON response:</string>
     <string name="no_value_set">-</string>
+    <string name="title_activity_chart">Charts</string>
+    <string name="chart_link">Display sensor charts</string>
+    <string name="request">request</string>
 
 </resources>

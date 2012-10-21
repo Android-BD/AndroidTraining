@@ -20,6 +20,7 @@ import org.json.JSONObject;
 
 import android.os.Bundle;
 import android.app.Activity;
+import android.content.Intent;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -44,6 +45,11 @@ public class MainActivity extends Activity {
 	String charset = "UTF8";
 	int port = 8081;
 	String path = "/sunspots/Spot1/sensors/temperature";
+
+	public void onClickStartChartActivity(View view) {
+		Intent intent = new Intent(this, ChartActivity.class);
+    	startActivity(intent);
+	}
 
 	public void onClickRawRequest(View view) {
 		Socket requestSocket;
@@ -78,7 +84,7 @@ public class MainActivity extends Activity {
 			while ((line = reader.readLine()) != null) {
 				editText.append(line);
 			}
-			
+
 			this.showValue(null);
 
 			// 4: Closing connection
@@ -124,7 +130,7 @@ public class MainActivity extends Activity {
 			while ((line = reader.readLine()) != null) {
 				editText.append(line);
 			}
-			
+
 			this.showValue(null);
 		} catch (URISyntaxException e) {
 			Log.d("http", "Malformed URI!");
@@ -180,7 +186,7 @@ public class MainActivity extends Activity {
 		} catch (IOException e) {
 			Log.d("http", "I/O Exception!");
 		} catch (JSONException e) {
-			Log.d("http", "JSON Exception! "+e.getMessage());
+			Log.d("http", "JSON Exception! " + e.getMessage());
 		}
 	}
 

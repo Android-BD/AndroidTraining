@@ -4,6 +4,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_seperator"
+        android:onClick="onClickStartChartActivity"
+        android:text="@string/chart_link" />
 
     <TextView
         android:id="@+id/textView1"
@@ -12,26 +20,39 @@
         android:text="@string/introduction_text"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
-    <Button
-        android:id="@+id/button1"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onClickRawRequest"
-        android:text="@string/hand_made" />
-
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onClickLibraryRequest"
-        android:text="@string/library_made" />
-
-    <Button
-        android:id="@+id/button3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onClickJsonRequest"
-        android:text="@string/json_made" />
+        android:layout_height="wrap_content" >
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="onClickRawRequest"
+            android:text="@string/hand_made" />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="onClickLibraryRequest"
+            android:text="@string/library_made" />
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="onClickJsonRequest"
+            android:text="@string/json_made" />
+
+        <TextView
+            android:id="@+id/textView3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/request"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
