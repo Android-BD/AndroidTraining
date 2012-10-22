@@ -35,6 +35,14 @@ public class ChartActivity extends Activity {
 	DownloadImageTask task = null;
 	boolean activate = false;
 
+	/** Stores the values measured and corresponding time points **/
+	ArrayList<Double> values = new ArrayList<Double>();
+	ArrayList<Long> timepoints = new ArrayList<Long>();
+	Double maxValue = Double.MIN_VALUE;
+	Double minValue = Double.MAX_VALUE;
+	
+	final static long TIME_STEP = 1000;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -66,77 +74,109 @@ public class ChartActivity extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-
+		activate = ((ToggleButton) findViewById(R.id.toggleButtonActivate)).isChecked();
 		this.updateStatus();
 	}
 
 	@Override
 	protected void onStop() {
 		super.onStop();
-		this.task.cancel(false);
+		activate = false;
+		this.updateStatus();
 	}
-	
+
 	public void onClickActivate(View view) {
 		activate = ((ToggleButton) view).isChecked();
 
 		this.updateStatus();
 	}
-	
-	private void updateStatus(){
+
+	private void updateStatus() {
 		if (activate) {
 			ImageView imageView = (ImageView) findViewById(R.id.chart_view);
-			this.task = new DownloadImageTask(imageView.getWidth(),imageView.getHeight());
+			this.task = new DownloadImageTask(imageView.getWidth(),
+					imageView.getHeight());
 			task.execute();
-		} else if(task !=null) {
+		} else if (task != null) {
 			this.task.cancel(false);
 		}
 	}
 
 	private class DownloadImageTask extends AsyncTask<Void, Bitmap, Bitmap> {
 		final String basic_url = "https://chart.googleapis.com/chart?";
-		final String basic_options = "&cht=lxy";
+		final String basic_options = "&cht=lxy&chxt=x,y";
 		int width;
 		int height;
-		
-		protected DownloadImageTask(int width, int height){
-			this.width = width;
-			this.height=height;
+		// the google chart tools knows a size limit for charts
+		final static int MAX_PIXEL_COUNT = 300000;
+		final static int PREFERRED_HEIGHT = 300;
+		final static int PREFERRED_WIDTH = 600;
+
+		long startTime;
+
+		protected DownloadImageTask(int width, int height) {
+			this.height = height>0?Math.min(PREFERRED_HEIGHT, height):PREFERRED_HEIGHT;
+			this.width = width>0?Math.min(width, MAX_PIXEL_COUNT / this.height):PREFERRED_WIDTH;  
 		}
-		
+
 		/**
 		 * The system calls this to perform work in a worker thread and delivers
 		 * it the parameters given to AsyncTask.execute()
 		 */
 		protected Bitmap doInBackground(Void... params) {
-			StringBuilder urlBuilder = new StringBuilder();
+			StringBuilder sb = new StringBuilder();
 			Bitmap chart = BitmapFactory.decodeResource(getResources(),
 					android.R.drawable.ic_popup_sync);
-			ArrayList<Double> values = new ArrayList<Double>();
+
+			this.startTime = System.currentTimeMillis();
 
 			try {
 				while (!this.isCancelled()) {
 					// Fetch Data
-					double value = Double.parseDouble(fetchJSONObject(
-							"/sunspots/Spot1/sensors/temperature").getString(
-							"value"));
-					values.add(value);
-					Log.d("Chart", "Value fetched: " + value);
+					JSONObject jsonO = fetchJSONObject("/sunspots/Spot1/sensors/temperature");
+					if (jsonO != null) {
+						double value = Double.parseDouble(jsonO
+								.getString("value"));
+						// add measured value, rounded to 2 decimals
+						value = (double) Math.round(value * 1000d) / 1000d;
+						values.add(value);
+						// check for new min/max
+						minValue = Math.min(minValue, value);
+						maxValue = Math.max(maxValue, value);
+						timepoints
+								.add((System.currentTimeMillis() - this.startTime) / 1000);
+						Log.d("Chart", "Value fetched: " + value);
 
-					// Build up url out of values
-					urlBuilder.delete(0, urlBuilder.length()); // clear builder
-					urlBuilder.append(basic_url);
-					
-					urlBuilder.append("chs="+600+"x"+500);
-					urlBuilder.append(basic_options);
-					urlBuilder
-							.append("&chd=t:10,20,40,80,90,95,99|20,30,40,50,60,70,80");
-					for (Double v : values) {
-						// urlBuilder.append();
+						// Build up url out of values
+						sb.delete(0, sb.length()); // clear builder
+						sb.append(basic_url);
+						sb.append(basic_options);
+						sb.append("&chs=" + this.width + "x" + this.height);
+						sb.append("&chxr=0,0,"+ timepoints.get(timepoints.size() - 1));
+						sb.append("&chxr=1,"+minValue + "," + maxValue);
+						sb.append("&chds=0,"
+								+ timepoints.get(timepoints.size() - 1) + ","
+								+ minValue + "," + maxValue);
+
+						// The format of the data:
+						// "&chd=t:10,20,40,80,90,95,99|20,30,40,50,60,70,80"
+						sb.append("&chd=t:");
+						for (Long t : timepoints) {
+							sb.append(t);
+							sb.append(",");
+						}
+						sb.delete(sb.length() - 1, sb.length());
+						sb.append("|");
+						for (Double v : values) {
+							sb.append(v);
+							sb.append(",");
+						}
+						sb.delete(sb.length() - 1, sb.length());
+
+						publishProgress(createChart(sb.toString()));
 					}
 
-					publishProgress(createChart(urlBuilder.toString()));
-
-					Thread.sleep(2000);
+					Thread.sleep(TIME_STEP);
 				}
 			} catch (JSONException e) {
 				Log.e("Chart", e.getMessage());
