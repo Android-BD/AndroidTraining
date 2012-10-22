@@ -1,8 +1,10 @@
 package ch.ethz.inf.vs.android.siwehrli.server;
 
 //used for networking
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,6 +18,9 @@ import android.hardware.SensorManager;
 //async task for multithreaded server
 import android.os.AsyncTask;
 
+//actuator stuff
+import android.os.Vibrator;
+import android.media.MediaPlayer;
 //rest
 import android.os.Bundle;
 import android.app.Activity;
@@ -26,19 +31,24 @@ import java.util.List;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
-	
-	//used for server
+
+	// used for server
 	private static final int SERVER_PORT = 8081;
 	private ServerSocket serverSocket;
 	private boolean acceptConnections;
-	
-	//sensor stuff
+
+	// sensor stuff
 	private SensorManager sensMng;
 	private List<Sensor> sensList;
 	private SensorEventListener mySensorListener;
 	private String[][] sensorTable;
-	
-	//used to display log
+
+	// actuator stuff
+	private Vibrator vib;
+	private long[] pattern;
+	private MediaPlayer mp;
+
+	// used to display log
 	Time time;
 	TextView outputView;
 
@@ -47,27 +57,34 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 
 		setContentView(R.layout.activity_main);
-		
-		//initialize log window
+
+		// initialize log window
 		outputView = (TextView) findViewById(R.id.serverText);
 		outputView.setMovementMethod(new ScrollingMovementMethod());
 		time = new Time();
 		
-		//initialize sensor stuff
+		//actuators stuff
+		vib = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+		pattern = new long[] { 0, 100 }; // 0 idle time, 100 long vibration
+		
+    	mp = MediaPlayer.create(this, R.raw.alarm);
+    	mp.setVolume(1.0f, 1.0f);
+		
+		// initialize sensor stuff
 		sensMng = (SensorManager) getSystemService(SENSOR_SERVICE);
 		sensList = sensMng.getSensorList(Sensor.TYPE_ALL);
 		sensorTable = new String[sensList.size()][6];
-		
+
 		mySensorListener = new SensorEventListener() {
 
 			public void onSensorChanged(SensorEvent event) {
-				//find place in table
+				// find place in table
 				Sensor sensor = event.sensor;
 				int i = -1;
 				do {
 					i++;
 				} while (!sensor.getName().equals(sensorTable[i][0]));
-				//set values in table
+				// set values in table
 				sensorTable[i][3] = Float.toString(event.values[0]);
 				sensorTable[i][4] = Float.toString(event.values[1]);
 				sensorTable[i][5] = Float.toString(event.values[2]);
@@ -76,8 +93,8 @@ public class MainActivity extends Activity {
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
 			}
 		};
-		
-		//translate sensor type to something human readable
+
+		// translate sensor type to something human readable
 		for (int i = 0; i < sensList.size(); i++) {
 			sensMng.registerListener(mySensorListener, sensList.get(i),
 					SensorManager.SENSOR_DELAY_NORMAL);
@@ -123,7 +140,7 @@ public class MainActivity extends Activity {
 			}
 		}
 
-		//set up server socket
+		// set up server socket
 		try {
 			serverSocket = new ServerSocket(SERVER_PORT);
 			acceptConnections = true;
@@ -132,8 +149,8 @@ public class MainActivity extends Activity {
 			outputView.append(time.format3339(false)
 					+ ": server socket creation failed.\n\n");
 		}
-		
-		//start accepting connections
+
+		// start accepting connections
 		AcceptConnectionsTask serverTask = new AcceptConnectionsTask();
 		serverTask.execute(serverSocket);
 	}
@@ -143,28 +160,27 @@ public class MainActivity extends Activity {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
 	}
-	
-	
-	//Async task to accept connections
+
+	// Async task to accept connections
 	class AcceptConnectionsTask extends AsyncTask<ServerSocket, String, Void> {
 
 		@Override
 		protected void onPreExecute() {
 			time.setToNow();
 			publishProgress(new String[] { time.format("%H %M %S")
-					+ ": async listening task started.\n\n"});
+					+ ": async listening task started.\n\n" });
 		}
 
 		@Override
 		protected Void doInBackground(ServerSocket... params) {
-			//get server socket
+			// get server socket
 			ServerSocket serverSocket = params[0];
 			while (acceptConnections) {
 				try {
-					//get client socket
+					// get client socket
 					Socket clientSocket = serverSocket.accept();
-					
-					//start async task to serve request
+
+					// start async task to serve request
 					RequestTask clientTask = new RequestTask();
 					clientTask.execute(clientSocket);
 
@@ -180,14 +196,13 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onProgressUpdate(String... params) {
 			for (String string : params) {
-				//print to log in textview
+				// print to log in textview
 				outputView.append(string);
 			}
 		}
 	}
 
-	
-	//async client task
+	// async client task
 	class RequestTask extends AsyncTask<Socket, String, Void> {
 		@Override
 		protected void onPreExecute() {
@@ -200,19 +215,38 @@ public class MainActivity extends Activity {
 		protected Void doInBackground(Socket... params) {
 			Socket clientSocket = params[0];
 			BufferedWriter writer;
+			BufferedReader reader;
 			try {
-				//get writer to send html to
+				// get writer to send html to
 				writer = new BufferedWriter(new OutputStreamWriter(
 						clientSocket.getOutputStream()));
+				reader = new BufferedReader(new InputStreamReader(
+						clientSocket.getInputStream()));
 
-				time.setToNow();
-				publishProgress(new String[] { time.format("%H %M %S")
-						+ ": client request received.\n\n" });
-				
-				//build html
+				String request = reader.readLine();
+
+				if (request.contains("vibrate")) {
+					time.setToNow();
+					publishProgress(new String[] { time.format("%H %M %S")
+							+ ": client vibrate request received.\n\n" });
+					// vibrate
+					vib.vibrate(pattern, -1);
+				} else if (request.contains("sound")) {
+					time.setToNow();
+					publishProgress(new String[] { time.format("%H %M %S")
+							+ ": client sound request received.\n\n" });
+					//play sound
+					mp.start();
+				} else {
+					time.setToNow();
+					publishProgress(new String[] { time.format("%H %M %S")
+							+ ": client (basic) request received.\n\n" });
+				}
+
+				// build html
 				String html = "<!DOCTYPE html><html><body><h1>Available Sensors:</h1><table border=\"1\" ><tr><td><b>Name</b></td><td><b>Vendor</b></td><td><b>Type</b></td><td><b>Value 1</b></td><td><b>Value 2</b></td><td><b>Value 3</b></td></tr>";
-				
-				//build sensor table
+
+				// build sensor table
 				for (String[] sensorStrings : sensorTable) {
 					html = html.concat("<tr><td>" + sensorStrings[0]
 							+ "</td><td>" + sensorStrings[1] + "</td><td>"
@@ -220,9 +254,11 @@ public class MainActivity extends Activity {
 							+ "</td><td>" + sensorStrings[4] + "</td><td>"
 							+ sensorStrings[5] + "</td></tr>");
 				}
-				html = html.concat("</table></body></html>");
+				html = html
+						.concat("</table><br><a href=\"/sound\">Play sound</a><br><a href=\"/vibrate\">Vibrate phone</a></body></html>");
 
-				//build and send http package
+
+				// build and send http package
 				writer.write("HTTP/1.1 200 OK\r\n");
 				writer.write("Server: bla\r\n");
 				writer.write("Content-Length: " + html.length() + "\r\n");
@@ -231,13 +267,14 @@ public class MainActivity extends Activity {
 				writer.write("Content-Type: text/html\r\n\r\n");
 				writer.write(html + "\r\n");
 				writer.flush();
-				//done with response
+				// done with response
 
 				time.setToNow();
 				publishProgress(new String[] { time.format("%H %M %S") + ": "
 						+ html + " sent\n\n" });
-				
-				//close connection
+
+				// close connection
+				reader.close();
 				writer.close();
 				clientSocket.close();
 
