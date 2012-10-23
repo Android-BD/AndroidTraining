@@ -24,15 +24,10 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".ChartService"
-            android:enabled="true"
-            android:exported="false" >
-        </service>
-
         <activity
             android:name=".ChartActivity"
-            android:label="@string/title_activity_chart" >
+            android:label="@string/title_activity_chart"
+            android:screenOrientation="portrait" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ch.ethz.inf.vs.android.siwehrli.rest.MainActivity" />

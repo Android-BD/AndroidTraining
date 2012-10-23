@@ -21,6 +21,7 @@ import org.json.JSONObject;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
@@ -33,15 +34,7 @@ import android.support.v4.app.NavUtils;
 
 public class ChartActivity extends Activity {
 	DownloadImageTask task = null;
-	boolean activate = false;
-
-	/** Stores the values measured and corresponding time points **/
-	ArrayList<Double> values = new ArrayList<Double>();
-	ArrayList<Long> timepoints = new ArrayList<Long>();
-	Double maxValue = Double.MIN_VALUE;
-	Double minValue = Double.MAX_VALUE;
-	
-	final static long TIME_STEP = 1000;
+	//boolean activate = false;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -50,11 +43,11 @@ public class ChartActivity extends Activity {
 
 		// set setting values to view components
 		ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonActivate);
-		tb.setChecked(activate);
+		tb.setChecked(false);
 
-		this.updateStatus();
+		this.updateStatus(false);
 	}
-
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.activity_chart, menu);
@@ -74,24 +67,27 @@ public class ChartActivity extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		activate = ((ToggleButton) findViewById(R.id.toggleButtonActivate)).isChecked();
-		this.updateStatus();
+		
+		this.updateStatus(((ToggleButton) findViewById(R.id.toggleButtonActivate)).isChecked());
 	}
 
 	@Override
 	protected void onStop() {
 		super.onStop();
-		activate = false;
-		this.updateStatus();
+		this.updateStatus(false);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		this.updateStatus(false);
 	}
 
 	public void onClickActivate(View view) {
-		activate = ((ToggleButton) view).isChecked();
-
-		this.updateStatus();
+		this.updateStatus(((ToggleButton) view).isChecked());
 	}
 
-	private void updateStatus() {
+	private void updateStatus(boolean activate) {
 		if (activate) {
 			ImageView imageView = (ImageView) findViewById(R.id.chart_view);
 			this.task = new DownloadImageTask(imageView.getWidth(),
@@ -104,13 +100,21 @@ public class ChartActivity extends Activity {
 
 	private class DownloadImageTask extends AsyncTask<Void, Bitmap, Bitmap> {
 		final String basic_url = "https://chart.googleapis.com/chart?";
-		final String basic_options = "&cht=lxy&chxt=x,y";
+		final String basic_options = "&cht=lxy&chxt=x,y&chdl=Temperature&chdlp=bv|l";
 		int width;
 		int height;
 		// the google chart tools knows a size limit for charts
 		final static int MAX_PIXEL_COUNT = 300000;
 		final static int PREFERRED_HEIGHT = 300;
 		final static int PREFERRED_WIDTH = 600;
+		
+		/** Stores the values measured and corresponding time points **/
+		ArrayList<Double> values = new ArrayList<Double>();
+		ArrayList<Long> timepoints = new ArrayList<Long>();
+		Double maxValue = Double.MIN_VALUE;
+		Double minValue = Double.MAX_VALUE;
+		
+		final static long TIME_STEP = 1000;
 
 		long startTime;
 
@@ -152,8 +156,7 @@ public class ChartActivity extends Activity {
 						sb.append(basic_url);
 						sb.append(basic_options);
 						sb.append("&chs=" + this.width + "x" + this.height);
-						sb.append("&chxr=0,0,"+ timepoints.get(timepoints.size() - 1));
-						sb.append("&chxr=1,"+minValue + "," + maxValue);
+						sb.append("&chxr=0,0,"+ timepoints.get(timepoints.size() - 1)+"|1,"+minValue + "," + maxValue);
 						sb.append("&chds=0,"
 								+ timepoints.get(timepoints.size() - 1) + ","
 								+ minValue + "," + maxValue);
