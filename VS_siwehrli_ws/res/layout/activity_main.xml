@@ -49,5 +49,23 @@
         android:layout_alignParentRight="true"
         android:layout_below="@+id/rawResponseDescTextBox"
         android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/rawXMLTextView"
+        android:text="@string/rawObj_desc"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/rawObjectView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/textView1"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
 </RelativeLayout>

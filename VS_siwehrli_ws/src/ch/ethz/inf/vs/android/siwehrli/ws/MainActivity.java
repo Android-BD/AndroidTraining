@@ -24,6 +24,8 @@ public class MainActivity extends Activity {
 	//Views to show results in
 	private TextView resultTextBox;
 	private TextView rawXMLView;
+	private TextView rawObjectView;
+
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -31,6 +33,7 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		resultTextBox = (TextView) findViewById(R.id.resultTextBox);
 		rawXMLView = (TextView) findViewById(R.id.rawXMLTextView);
+		rawObjectView = (TextView) findViewById(R.id.rawObjectView);
 	}
 
 	@Override
@@ -75,7 +78,6 @@ public class MainActivity extends Activity {
 				//retrieve response
 				rawXmlResponse = httpTransport.responseDump;
 				SoapObject result = (SoapObject) mySoapEnvelope.getResponse();
-				
 				return result;
 			} catch (Exception e) {
 				//will be thrown if no network, etc
@@ -91,6 +93,7 @@ public class MainActivity extends Activity {
 						.getPrimitivePropertyAsString("temperature");
 				resultTextBox.setText(temp);
 				rawXMLView.setText(rawXmlResponse);
+				rawObjectView.setText(result.toString());
 			} catch (NullPointerException e) {
 				//result was null, something went wrong, apologize
 				resultTextBox.setText("no data");

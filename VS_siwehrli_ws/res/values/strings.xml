@@ -7,6 +7,8 @@
     <string name="button_get_temp">Get temperature</string>
     <string name="temp_desc">Temperature:</string>
     <string name="rawXML_desc">Raw XML response:</string>
+    <string name="rawObj_desc">Raw Soap Object:</string>
+    
     
 
 </resources>
