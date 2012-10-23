@@ -98,6 +98,7 @@ public class MainActivity extends Activity {
 				//result was null, something went wrong, apologize
 				resultTextBox.setText("no data");
 				rawXMLView.setText("Something went wrong. Sorry!");
+				rawObjectView.setText("");
 			}
 		}
 	}
