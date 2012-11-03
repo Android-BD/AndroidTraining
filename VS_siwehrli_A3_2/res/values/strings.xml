@@ -4,5 +4,9 @@
     <string name="hello_world">Hello world!</string>
     <string name="menu_settings">Settings</string>
     <string name="title_activity_main">Chat-Lamport</string>
+    <string name="send">Send</string>
+    <string name="toggle_button_name">toggle_button</string>
+    <string name="register">Register</string>
+    <string name="unregister">Unregister</string>
 
 </resources>
