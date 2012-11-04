@@ -8,5 +8,9 @@
     <string name="toggle_button_name">toggle_button</string>
     <string name="register">Register</string>
     <string name="unregister">Unregister</string>
+    <string name="register_ok">Registering successful</string>
+    <string name="register_failed">Registering failed</string>
+    <string name="message_send">Message sent</string>
+    <string name="message_failed">Message sending failed</string>
 
 </resources>
