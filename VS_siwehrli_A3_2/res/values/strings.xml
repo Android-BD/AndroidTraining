@@ -12,5 +12,13 @@
     <string name="register_failed">Registering failed</string>
     <string name="message_send">Message sent</string>
     <string name="message_failed">Message sending failed</string>
+    <string name="deregister_ok">Deregistering successful</string>
+    <string name="deregister_failed">Deregistering failed</string>
+    <string name="user_name_hint">Your name</string>
+    <string name="message_hint">Your message</string>
+    <string name="message_empty">Please fill in a message</string>
+    <string name="message_sending_failed">Message sending failed</string>
+    <string name="register_needed">Please register before sending messages</string>
+    <string name="name_empty">Please fill in a name</string>
 
 </resources>

@@ -1,6 +1,6 @@
 package ch.ethz.inf.vs.android.siwehrli.a3;
 
-public class TextMessage {
+public class TextMessage implements Comparable<TextMessage>{
 	public String message;
 	public int timestamp;
 	
@@ -15,5 +15,10 @@ public class TextMessage {
 
 	public String getFormatedTime() {
 		return timestamp +"";
+	}
+
+	@Override
+	public int compareTo(TextMessage another) {
+		return this.timestamp-another.timestamp;
 	}
 }
