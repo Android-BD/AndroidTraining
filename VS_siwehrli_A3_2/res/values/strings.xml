@@ -21,5 +21,6 @@
     <string name="register_needed">Please register before sending messages</string>
     <string name="name_empty">Please fill in a name</string>
     <string name="dialog.register">registering...</string>
+    <string name="dialog_deregister">deregistering...</string>
 
 </resources>

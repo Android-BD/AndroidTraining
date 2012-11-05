@@ -80,8 +80,8 @@ public class MainActivity extends Activity {
 	protected void onDestroy() {
 		super.onDestroy();
 		if (registered) {
-			RegisterTask task = new RegisterTask(userName);
-			task.execute(false);
+			RegisterTask task = new RegisterTask(userName, false);
+			task.execute();
 
 			// save settings
 			SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
@@ -98,8 +98,8 @@ public class MainActivity extends Activity {
 		EditText editName = (EditText) findViewById(R.id.editName);
 		this.userName = editName.getText().toString();
 
-		RegisterTask task = new RegisterTask(userName);
-		task.execute(tb.isChecked());
+		RegisterTask task = new RegisterTask(userName, tb.isChecked());
+		task.execute();
 	}
 
 	public void onClickSend(View view) {
@@ -202,26 +202,33 @@ public class MainActivity extends Activity {
 		this.adapter.notifyDataSetChanged();
 	}
 
-	private class RegisterTask extends AsyncTask<Boolean, Void, Boolean> {
+	private class RegisterTask extends AsyncTask<Void, Void, Boolean> {
 		private ProgressDialog progressDialog;
 		String userName;
 		int toastID = R.string.hello_world;
+		private boolean registering;
 
-		public RegisterTask(String userName) {
+		public RegisterTask(String userName, boolean register) {
 			this.userName = userName;
+			this.registering = register;
 		}
 
 		@Override
 		protected void onPreExecute() {
-			progressDialog = ProgressDialog.show(MainActivity.this, "",getResources().getString(R.string.dialog_register));
+			if (registering)
+				progressDialog = ProgressDialog.show(MainActivity.this, "",
+						getResources().getString(R.string.dialog_register));
+			else
+				progressDialog = ProgressDialog.show(MainActivity.this, "",
+						getResources().getString(R.string.dialog_deregister));
 		}
 
 		@Override
 		/**
 		 * returns if user is registered after background operation has completed
 		 */
-		protected Boolean doInBackground(Boolean... register) {
-			if (register[0]) {
+		protected Boolean doInBackground(Void... args) {
+			if (registering) {
 
 				if (this.userName.equals("")) {
 					this.toastID = R.string.name_empty;
@@ -296,8 +303,8 @@ public class MainActivity extends Activity {
 			} catch (JSONException e) {
 				Log.e(LOG_TAG, e.getMessage());
 			}
-			
-			if(socket!=null)
+
+			if (socket != null)
 				socket.close();
 
 			return false;
@@ -350,9 +357,9 @@ public class MainActivity extends Activity {
 				Log.e(LOG_TAG, e.getMessage());
 			}
 
-			if(socket!=null)
+			if (socket != null)
 				socket.close();
-			
+
 			return true;
 		}
 
