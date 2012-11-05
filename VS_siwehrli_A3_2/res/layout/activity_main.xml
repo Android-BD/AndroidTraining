@@ -32,12 +32,13 @@
             android:textOn="@string/unregister" />
 
     </LinearLayout>
-
+
     <ListView
         android:id="@+id/listViewMessages"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" >
+        android:layout_weight="1"
+        android:transcriptMode="alwaysScroll" >
 
     </ListView>
 

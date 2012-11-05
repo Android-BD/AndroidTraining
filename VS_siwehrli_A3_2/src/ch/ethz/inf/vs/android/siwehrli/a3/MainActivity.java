@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -17,6 +18,7 @@ import org.json.JSONObject;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Menu;
@@ -40,10 +42,11 @@ public class MainActivity extends Activity {
 	private MyArrayAdapter adapter;
 
 	// data structure for holding messages
-	PriorityBlockingQueue<TextMessage> messages = new PriorityBlockingQueue<TextMessage>();
+	ArrayList<TextMessage> messages = new ArrayList<TextMessage>();
+	PriorityBlockingQueue<TextMessage> messagesPrearrived = new PriorityBlockingQueue<TextMessage>();
 
 	private boolean registered = false;
-	private String userName =""; // is saved if app is stopped by OS
+	private String userName = ""; // is saved if app is stopped by OS
 	private int index = 0;
 	private Map<Integer, Integer> initialTimeVector = null;
 
@@ -53,11 +56,10 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 
 		ListView listView = (ListView) findViewById(R.id.listViewMessages);
-		TextMessage[] values = new TextMessage[] {
-				new TextMessage("Hello", 54), new TextMessage("Bye", 545) };
+		messages.add(new TextMessage("Hello testmessage", 54));
 
 		// Assign adapter to ListView
-		adapter = new MyArrayAdapter(this, values);
+		adapter = new MyArrayAdapter(this, messages);
 		listView.setAdapter(adapter);
 
 		// read settings into private fields
@@ -77,40 +79,27 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		if (registered)
-			this.deregister();
+		if (registered) {
+			RegisterTask task = new RegisterTask(userName);
+			task.execute(false);
+
+			// save settings
+			SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
+					MODE_PRIVATE);
+			SharedPreferences.Editor editor = settings.edit();
+			editor.putString("user_name", this.userName);
+			editor.commit(); // Commit changes to file!!!
+		}
 	}
 
 	public void onClickRegister(View view) {
 		ToggleButton tb = ((ToggleButton) view);
 
-		if (tb.isChecked()) {
-			EditText editName = (EditText) findViewById(R.id.editName);
-			this.userName = editName.getText().toString();
-			if (this.userName.equals("")) {
-				Toast.makeText(this, R.string.name_empty, TOAST_DURATION)
-						.show();
-			} else {
-				if (this.register()) {
-					Toast.makeText(this, R.string.register_ok, TOAST_DURATION)
-							.show();
-				} else {
-					Toast.makeText(this, R.string.register_failed,
-							TOAST_DURATION).show();
-				}
-			}
+		EditText editName = (EditText) findViewById(R.id.editName);
+		this.userName = editName.getText().toString();
 
-		} else {
-			if (this.deregister()) {
-				Toast.makeText(this, R.string.deregister_ok, TOAST_DURATION)
-						.show();
-			} else {
-				Toast.makeText(this, R.string.deregister_failed, TOAST_DURATION)
-						.show();
-			}
-		}
-		
-		tb.setChecked(this.registered);
+		RegisterTask task = new RegisterTask(userName);
+		task.execute(tb.isChecked());
 	}
 
 	public void onClickSend(View view) {
@@ -152,6 +141,7 @@ public class MainActivity extends Activity {
 			DatagramPacket packet = new DatagramPacket(data, data.length, to,
 					CHAT_SERVER_PORT);
 			socket.send(packet);
+			socket.close();
 
 			// only add message to view if sent to the server successful
 			this.addMessage(new TextMessage(message, initialTimeVector.get(0)));
@@ -165,103 +155,6 @@ public class MainActivity extends Activity {
 		}
 
 		return false;
-	}
-
-	private boolean register() {
-		Log.d(LOG_TAG, "Register user with name: " + userName);
-		DatagramSocket socket;
-		try {
-			socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
-
-			InetAddress to = InetAddress.getByName(HOST_NAME);
-			String request = createRequest_register(userName);
-			Log.d(LOG_TAG, "Request: " + request);
-
-			byte[] data = request.getBytes();
-
-			DatagramPacket packet = new DatagramPacket(data, data.length, to,
-					REGISTER_SERVER_PORT);
-
-			socket.send(packet);
-
-			// Receive
-			data = new byte[PACKET_SIZE];
-			DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
-			socket.setSoTimeout(REGISTRATION_TIMEOUT);
-			socket.receive(pack);
-
-			String answer = new String(pack.getData(), 0, pack.getLength());
-			Log.d(LOG_TAG, "Received message: " + answer);
-
-			JSONObject jsonAnswer = new JSONObject(answer);
-			String success = jsonAnswer.getString("success");
-			if (success.equals("reg_ok")) {
-				// used only in Task 3
-				index = Integer.parseInt(jsonAnswer.getString("index"));
-				initialTimeVector = this.readTimeVector(jsonAnswer);
-				socket.close();
-				this.registered=true;
-			} else {
-				socket.close();
-				this.registered=false;
-			}
- 
-		} catch (SocketException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (JSONException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		}
-
-		return this.registered;
-	}
-
-	private boolean deregister() {
-		Log.d(LOG_TAG, "Deregister user with name: " + userName);
-		DatagramSocket socket;
-		try {
-			socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
-
-			InetAddress to = InetAddress.getByName(HOST_NAME);
-			String request = createRequest_deregister(userName);
-			Log.d(LOG_TAG, "Request: " + request);
-
-			byte[] data = request.getBytes();
-
-			DatagramPacket packet = new DatagramPacket(data, data.length, to,
-					REGISTER_SERVER_PORT);
-
-			socket.send(packet);
-
-			// Receive
-			data = new byte[PACKET_SIZE];
-			DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
-			socket.setSoTimeout(REGISTRATION_TIMEOUT);
-			socket.receive(pack);
-
-			String answer = new String(pack.getData(), 0, pack.getLength());
-			Log.d(LOG_TAG, "Received message: " + answer);
-
-			JSONObject jsonAnswer = new JSONObject(answer);
-			String success = jsonAnswer.getString("success");
-			if (success.equals("dreg_ok")) {
-				socket.close();
-				this.registered=false;
-			} else {
-				socket.close();
-				this.registered=true;
-			}
-
-		} catch (SocketException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (JSONException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		}
-
-		return !this.registered;
 	}
 
 	private static String createRequest_register(String userName)
@@ -306,24 +199,175 @@ public class MainActivity extends Activity {
 
 	private void addMessage(TextMessage message) {
 		this.messages.add(message);
-		this.adapter.clear();
-		for (TextMessage m : messages)
-			this.adapter.add(m);
 		this.adapter.notifyDataSetChanged();
 	}
 
-	// private class ReceiveMessagesTask extends AsyncTask<String, Void,
-	// TextMessage> {
-	// /** The system calls this to perform work in a worker thread and
-	// * delivers it the parameters given to AsyncTask.execute() */
-	// protected Bitmap doInBackground(String... urls) {
-	// return loadImageFromNetwork(urls[0]);
-	// }
-	//
-	// /** The system calls this to perform work in the UI thread and delivers
-	// * the result from doInBackground() */
-	// protected void onPostExecute(Bitmap result) {
-	// mImageView.setImageBitmap(result);
-	// }
-	// }
+	private class RegisterTask extends AsyncTask<Boolean, Void, Boolean> {
+		private ProgressDialog progressDialog;
+		String userName;
+		int toastID = R.string.hello_world;
+
+		public RegisterTask(String userName) {
+			this.userName = userName;
+		}
+
+		@Override
+		protected void onPreExecute() {
+			progressDialog = ProgressDialog.show(MainActivity.this, "",getResources().getString(R.string.dialog_register));
+		}
+
+		@Override
+		/**
+		 * returns if user is registered after background operation has completed
+		 */
+		protected Boolean doInBackground(Boolean... register) {
+			if (register[0]) {
+
+				if (this.userName.equals("")) {
+					this.toastID = R.string.name_empty;
+					return false;
+				} else {
+					if (this.register()) {
+						this.toastID = R.string.register_ok;
+						return true;
+					} else {
+						this.toastID = R.string.register_failed;
+						return false;
+					}
+				}
+
+			} else {
+				if (this.deregister()) {
+					this.toastID = R.string.deregister_ok;
+					return false;
+				} else {
+					this.toastID = R.string.deregister_failed;
+					return true;
+				}
+			}
+		}
+
+		/**
+		 * returns if user is registered after operation has completed
+		 */
+		private boolean register() {
+			Log.d(LOG_TAG, "Register user with name: " + userName);
+			DatagramSocket socket = null;
+			try {
+				socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
+
+				InetAddress to = InetAddress.getByName(HOST_NAME);
+				String request = createRequest_register(userName);
+				Log.d(LOG_TAG, "Request: " + request);
+
+				byte[] data = request.getBytes();
+
+				DatagramPacket packet = new DatagramPacket(data, data.length,
+						to, REGISTER_SERVER_PORT);
+
+				socket.send(packet);
+
+				// Receive
+				data = new byte[PACKET_SIZE];
+				DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
+				socket.setSoTimeout(REGISTRATION_TIMEOUT);
+				socket.receive(pack);
+
+				String answer = new String(pack.getData(), 0, pack.getLength());
+				Log.d(LOG_TAG, "Received message: " + answer);
+
+				JSONObject jsonAnswer = new JSONObject(answer);
+				String success = jsonAnswer.getString("success");
+				if (success.equals("reg_ok")) {
+					// used only in Task 3
+					index = Integer.parseInt(jsonAnswer.getString("index"));
+					initialTimeVector = readTimeVector(jsonAnswer);
+					socket.close();
+					return true;
+				} else {
+					socket.close();
+					return false;
+				}
+
+			} catch (SocketException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (IOException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (JSONException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			}
+			
+			if(socket!=null)
+				socket.close();
+
+			return false;
+		}
+
+		/**
+		 * returns if user is registered after operation has completed
+		 */
+		private boolean deregister() {
+			Log.d(LOG_TAG, "Deregister user with name: " + userName);
+			DatagramSocket socket = null;
+			try {
+				socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
+
+				InetAddress to = InetAddress.getByName(HOST_NAME);
+				String request = createRequest_deregister(userName);
+				Log.d(LOG_TAG, "Request: " + request);
+
+				byte[] data = request.getBytes();
+
+				DatagramPacket packet = new DatagramPacket(data, data.length,
+						to, REGISTER_SERVER_PORT);
+
+				socket.send(packet);
+
+				// Receive
+				data = new byte[PACKET_SIZE];
+				DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
+				socket.setSoTimeout(REGISTRATION_TIMEOUT);
+				socket.receive(pack);
+
+				String answer = new String(pack.getData(), 0, pack.getLength());
+				Log.d(LOG_TAG, "Received message: " + answer);
+
+				JSONObject jsonAnswer = new JSONObject(answer);
+				String success = jsonAnswer.getString("success");
+				if (success.equals("dreg_ok")) {
+					socket.close();
+					return false;
+				} else {
+					socket.close();
+					return true;
+				}
+
+			} catch (SocketException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (IOException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (JSONException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			}
+
+			if(socket!=null)
+				socket.close();
+			
+			return true;
+		}
+
+		@Override
+		protected void onPostExecute(Boolean result) {
+			registered = result;
+
+			ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonRegister);
+			tb.setChecked(result);
+
+			Toast.makeText(getApplicationContext(), this.toastID,
+					TOAST_DURATION).show();
+
+			progressDialog.dismiss();
+
+		}
+	}
 }

@@ -1,5 +1,7 @@
 package ch.ethz.inf.vs.android.siwehrli.a3;
 
+import java.util.ArrayList;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,12 +11,12 @@ import android.widget.TextView;
 
 public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 	private final Context context;
-	private final TextMessage[] values;
+	ArrayList<TextMessage> messages = new ArrayList<TextMessage>();
 
-	public MyArrayAdapter(Context context, TextMessage[] values) {
-		super(context, R.layout.message_layout, values);
+	public MyArrayAdapter(Context context, ArrayList<TextMessage> messages) {
+		super(context, R.layout.message_layout, messages);
 		this.context = context;
-		this.values = values;
+		this.messages = messages;
 	}
 
 	static class ViewHolder {
@@ -44,8 +46,8 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 
 		ViewHolder holder = (ViewHolder) messageView.getTag();
 
-		holder.textViewMessage.setText(values[position].getFormatedMessage());
-		holder.textViewTime.setText(values[position].getFormatedTime());
+		holder.textViewMessage.setText(this.messages.get(position).getFormatedMessage());
+		holder.textViewTime.setText(this.messages.get(position).getFormatedTime());
 
 		return messageView;
 	}
