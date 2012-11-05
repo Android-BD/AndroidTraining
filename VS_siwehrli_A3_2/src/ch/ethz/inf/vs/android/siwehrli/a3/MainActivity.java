@@ -107,9 +107,10 @@ public class MainActivity extends Activity {
 			EditText editMessage = (EditText) findViewById(R.id.editMessage);
 			String message = editMessage.getText().toString();
 			if (!message.equals("")) {
-				if (!this.sendMessage(message)) {
-					Toast.makeText(this, R.string.message_sending_failed,
-							TOAST_DURATION).show();
+				SendTask task = new SendTask();
+				task.execute(message);
+				if (task.isSent()) {
+					editMessage.setText("");
 				}
 			} else {
 				Toast.makeText(this, R.string.message_empty, TOAST_DURATION)
@@ -119,42 +120,6 @@ public class MainActivity extends Activity {
 			Toast.makeText(this, R.string.register_needed, TOAST_DURATION)
 					.show();
 		}
-	}
-
-	private boolean sendMessage(String message) {
-		Log.d(LOG_TAG, "Send message: " + message);
-		DatagramSocket socket;
-		try {
-			socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
-
-			InetAddress to = InetAddress.getByName(HOST_NAME);
-
-			// build JSON
-			JSONObject object = new JSONObject();
-			object.put("cmd", "message");
-			object.put("text", message);
-			String request = object.toString();
-			Log.d(LOG_TAG, "Sending: " + request);
-
-			// send packet
-			byte[] data = request.getBytes();
-			DatagramPacket packet = new DatagramPacket(data, data.length, to,
-					CHAT_SERVER_PORT);
-			socket.send(packet);
-			socket.close();
-
-			// only add message to view if sent to the server successful
-			this.addMessage(new TextMessage(message, initialTimeVector.get(0)));
-			return true;
-		} catch (SocketException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		} catch (JSONException e) {
-			Log.e(LOG_TAG, e.getMessage());
-		}
-
-		return false;
 	}
 
 	private static String createRequest_register(String userName)
@@ -195,11 +160,6 @@ public class MainActivity extends Activity {
 			map.put(names.getInt(i), jsonTimeVector.getInt(names.getString(i)));
 		}
 		return map;
-	}
-
-	private void addMessage(TextMessage message) {
-		this.messages.add(message);
-		this.adapter.notifyDataSetChanged();
 	}
 
 	private class RegisterTask extends AsyncTask<Void, Void, Boolean> {
@@ -374,6 +334,67 @@ public class MainActivity extends Activity {
 					TOAST_DURATION).show();
 
 			progressDialog.dismiss();
+
+		}
+	}
+
+	private class SendTask extends AsyncTask<String, Void, Boolean> {
+		private boolean ok = false;
+
+		public boolean isSent() {
+			return ok;
+		}
+
+		@Override
+		/**
+		 * return if message successfully sent
+		 */
+		protected Boolean doInBackground(String... args) {
+			String message = args[0];
+			Log.d(LOG_TAG, "Send message: " + message);
+			DatagramSocket socket;
+			try {
+				socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
+
+				InetAddress to = InetAddress.getByName(HOST_NAME);
+
+				// build JSON
+				JSONObject object = new JSONObject();
+				object.put("cmd", "message");
+				object.put("text", message);
+				String request = object.toString();
+				Log.d(LOG_TAG, "Sending: " + request);
+
+				// send packet
+				byte[] data = request.getBytes();
+				DatagramPacket packet = new DatagramPacket(data, data.length,
+						to, CHAT_SERVER_PORT);
+				socket.send(packet);
+				socket.close();
+
+				// only add message to view if sent to the server successful
+				messages.add(new TextMessage(message, initialTimeVector.get(0)));
+				return true;
+			} catch (SocketException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (IOException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			} catch (JSONException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			}
+
+			return false;
+		}
+
+		@Override
+		protected void onPostExecute(Boolean result) {
+			if (!result)
+				Toast.makeText(MainActivity.this,
+						R.string.message_sending_failed, TOAST_DURATION).show();
+			else
+				adapter.notifyDataSetChanged();
+
+			this.ok = result;
 
 		}
 	}

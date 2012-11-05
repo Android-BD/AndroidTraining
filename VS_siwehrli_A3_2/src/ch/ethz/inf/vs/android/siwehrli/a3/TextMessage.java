@@ -1,8 +1,11 @@
 package ch.ethz.inf.vs.android.siwehrli.a3;
 
+import java.util.Map;
+
 public class TextMessage implements Comparable<TextMessage>{
 	public String message;
 	public int timestamp;
+	private Map<Integer, Integer> vectorTime = null;
 	
 	public TextMessage(String message, int timestamp){
 		this.message=message;
