@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +20,7 @@ import org.json.JSONObject;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -32,14 +36,13 @@ import android.widget.ToggleButton;
 public class MainActivity extends Activity {
 	private static final String LOG_TAG = "Chat";
 	private static final String HOST_NAME = "vslab.inf.ethz.ch";
-	private static final int REGISTER_LOCALHOST_PORT = 4000;
-	private static final int REGISTER_SERVER_PORT = 4000;
-	private static final int CHAT_LOCALHOST_PORT = 4001;
-	private static final int CHAT_SERVER_PORT = 4001;
+	private static final int REGISTER_PORT = 4000;
+	private static final int CHAT_PORT = 4001;
 	private static final int TOAST_DURATION = Toast.LENGTH_SHORT;
 	private static final int PACKET_SIZE = 1024;
 	private static final int REGISTRATION_TIMEOUT = 10000;
 	private static final int MESSAGE_RECEIVE_TIMEOUT = 2000;
+	private static final int MESSAGE_DELIVERY_TIMEOUT = 10000;
 
 	private static final String SETTINGS_NAME = "Settings";
 	private MyArrayAdapter adapter;
@@ -55,12 +58,12 @@ public class MainActivity extends Activity {
 
 	// data structure for holding messages
 	ArrayList<TextMessage> messages = new ArrayList<TextMessage>();
-	PriorityBlockingQueue<TextMessage> messagesPrearrived = new PriorityBlockingQueue<TextMessage>();
+	PriorityBlockingQueue<TextMessage> waitingMessages = new PriorityBlockingQueue<TextMessage>();
 
 	private boolean registered = false;
 	private String userName = ""; // is saved if app is stopped by OS
 	private int index = 0;
-	private Map<Integer, Integer> initialTimeVector = null;
+	private Map<Integer, Integer> currentVectorTime = null;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -82,9 +85,17 @@ public class MainActivity extends Activity {
 		editName.setText(this.userName);
 
 		try {
-			messageSocket = new DatagramSocket(CHAT_LOCALHOST_PORT);
+			messageSocket = new DatagramSocket(CHAT_PORT);
+			// create reusable socket
+			DatagramChannel channel = DatagramChannel.open();
+			messageSocket = channel.socket();
+			messageSocket.setReuseAddress(true);
+			InetSocketAddress addr = new InetSocketAddress(CHAT_PORT);
+			messageSocket.bind(addr);
 			messageSocket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
 		} catch (SocketException e) {
+			Log.e(LOG_TAG, e.getMessage());
+		} catch (IOException e) {
 			Log.e(LOG_TAG, e.getMessage());
 		}
 
@@ -112,7 +123,7 @@ public class MainActivity extends Activity {
 			editor.putString("user_name", this.userName);
 			editor.commit(); // Commit changes to file!!!
 		}
-		
+
 		this.receiveTask.cancel(false);
 	}
 
@@ -229,7 +240,13 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Register user with name: " + userName);
 			DatagramSocket socket = null;
 			try {
-				socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
+				// create reusable socket
+				DatagramChannel channel = DatagramChannel.open();
+				socket = channel.socket();
+				socket.setReuseAddress(true);
+				InetSocketAddress addr = new InetSocketAddress(REGISTER_PORT);
+				socket.bind(addr);
+				socket.setSoTimeout(REGISTRATION_TIMEOUT);
 
 				InetAddress to = InetAddress.getByName(HOST_NAME);
 				String request = createRequest_register(userName);
@@ -238,14 +255,13 @@ public class MainActivity extends Activity {
 				byte[] data = request.getBytes();
 
 				DatagramPacket packet = new DatagramPacket(data, data.length,
-						to, REGISTER_SERVER_PORT);
+						to, REGISTER_PORT);
 
 				socket.send(packet);
 
 				// Receive
 				data = new byte[PACKET_SIZE];
 				DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
-				socket.setSoTimeout(REGISTRATION_TIMEOUT);
 				socket.receive(pack);
 
 				String answer = new String(pack.getData(), 0, pack.getLength());
@@ -255,7 +271,7 @@ public class MainActivity extends Activity {
 				String success = jsonAnswer.getString("success");
 				if (success.equals("reg_ok")) {
 					index = Integer.parseInt(jsonAnswer.getString("index"));
-					initialTimeVector = TextMessage.readTimeVector(jsonAnswer
+					currentVectorTime = TextMessage.readTimeVector(jsonAnswer
 							.getJSONObject("time_vector"));
 					socket.close();
 					return true;
@@ -285,7 +301,12 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Deregister user with name: " + userName);
 			DatagramSocket socket = null;
 			try {
-				socket = new DatagramSocket(REGISTER_LOCALHOST_PORT);
+				// create reusable socket
+				DatagramChannel channel = DatagramChannel.open();
+				socket = channel.socket();
+				socket.setReuseAddress(true);
+				InetSocketAddress addr = new InetSocketAddress(REGISTER_PORT);
+				socket.bind(addr);
 
 				InetAddress to = InetAddress.getByName(HOST_NAME);
 				String request = createRequest_deregister(userName);
@@ -294,7 +315,7 @@ public class MainActivity extends Activity {
 				byte[] data = request.getBytes();
 
 				DatagramPacket packet = new DatagramPacket(data, data.length,
-						to, REGISTER_SERVER_PORT);
+						to, REGISTER_PORT);
 
 				socket.send(packet);
 
@@ -325,8 +346,9 @@ public class MainActivity extends Activity {
 				Log.e(LOG_TAG, e.getMessage());
 			}
 
-			if (socket != null)
+			if (socket != null) {
 				socket.close();
+			}
 
 			return true;
 		}
@@ -346,17 +368,15 @@ public class MainActivity extends Activity {
 
 			// start listening for messages
 			if (result) {
-				if(receiveTask.getStatus()==AsyncTask.Status.PENDING)
-				receiveTask.execute();
-				else if(receiveTask.getStatus()==AsyncTask.Status.FINISHED){
-					receiveTask=new ReceiveTask();
+				if (receiveTask.getStatus() == AsyncTask.Status.PENDING)
+					receiveTask.execute();
+				else if (receiveTask.getStatus() == AsyncTask.Status.FINISHED) {
+					receiveTask = new ReceiveTask();
 					receiveTask.execute();
 				}
-			}
-			else
-			{
+			} else {
 				receiveTask.cancel(false);
-				receiveTask=new ReceiveTask(); // make ready for next time
+				receiveTask = new ReceiveTask(); // make ready for next time
 			}
 
 			progressDialog.dismiss();
@@ -379,10 +399,11 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Send message: " + args[0]);
 
 			// Time logic // TODO Frederik edit here
-			TextMessage message = new TextMessage(args[0], initialTimeVector); // time
-																				// logic
-																				// edit
-																				// here!
+			TextMessage message;
+			synchronized (currentVectorTime) {
+				currentVectorTime.put(0, currentVectorTime.get(0) + 1);
+				message = new TextMessage(args[0], currentVectorTime);
+			}
 
 			// sending message
 			try {
@@ -397,7 +418,7 @@ public class MainActivity extends Activity {
 				// send packet
 				byte[] data = request.getBytes();
 				DatagramPacket packet = new DatagramPacket(data, data.length,
-						to, CHAT_SERVER_PORT);
+						to, CHAT_PORT);
 				messageSocket.send(packet);
 
 				// only add message to view if sent to the server successful
@@ -450,9 +471,57 @@ public class MainActivity extends Activity {
 						Log.d(LOG_TAG, "Received message: " + answer);
 
 						// parse
-						TextMessage message = new TextMessage(new JSONObject(
-								answer), initialTimeVector);
-						messages.add(message);
+						final TextMessage message = new TextMessage(
+								new JSONObject(answer), currentVectorTime);
+
+						// time logic // TODO Frederik
+						if (message.isDeliverable(currentVectorTime)) {
+							messages.add(message);
+						} else {
+							waitingMessages.put(message);
+
+							// start timeout (is this the GUI-Thread?!)
+							new CountDownTimer(MESSAGE_DELIVERY_TIMEOUT, 1000) {
+
+								public void onTick(long millisUntilFinished) {
+									tryDelivery();
+								}
+
+								public void onFinish() {
+									if (!tryDelivery()) {
+										// timeout expired without message
+										// getting
+										// deliverable
+										deliverAnyway();
+									}
+
+								}
+
+								private boolean tryDelivery() {
+									if (message
+											.isDeliverable(currentVectorTime)) {
+										if (waitingMessages.remove(message)) {
+											// message is still in queue
+											messages.add(message);
+										}
+										this.cancel();
+										return true;
+									} else {
+										return false;
+									}
+								}
+								
+								private void deliverAnyway(){
+									TextMessage errorMessage = new TextMessage(getResources().getString(R.string.missing_message), currentVectorTime);
+									errorMessage.setErrorType();
+									messages.add(errorMessage);
+									while(waitingMessages.peek()!=message){
+										messages.add(waitingMessages.poll());
+									}
+									messages.add(waitingMessages.poll());
+								}
+							}.start();
+						}
 
 					} catch (SocketException e) {
 						Log.e(LOG_TAG, e.getMessage());
@@ -465,11 +534,11 @@ public class MainActivity extends Activity {
 			}
 
 			messageSocket.close();
-			
+
 			Log.d(LOG_TAG, "Stop receiving messages");
 			return null;
 		}
-		
+
 		@Override
 		protected void onPostExecute(Void result) {
 			adapter.notifyDataSetChanged();

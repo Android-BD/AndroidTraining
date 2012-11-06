@@ -34,20 +34,26 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 					.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 			messageView = inflater.inflate(R.layout.message_layout, parent,
 					false);
-			// Performance optimization: enables faster access to view via static class
+			// Performance optimization: enables faster access to view via
+			// static class
 			ViewHolder viewHolder = new ViewHolder();
 			viewHolder.textViewMessage = (TextView) messageView
 					.findViewById(R.id.textViewMessage);
 			viewHolder.textViewTime = (TextView) messageView
 					.findViewById(R.id.textViewTime);
 			messageView.setTag(viewHolder);
-
 		}
 
 		ViewHolder holder = (ViewHolder) messageView.getTag();
 
-		holder.textViewMessage.setText(this.messages.get(position).getFormatedMessage());
-		holder.textViewTime.setText(this.messages.get(position).getFormatedTime());
+		holder.textViewMessage.setText(this.messages.get(position)
+				.getFormatedMessage());
+		holder.textViewTime.setText(this.messages.get(position)
+				.getFormatedTime());
+		if (this.messages.get(position).isDelayedPublished())
+			messageView.setBackgroundColor(0xFFFFFF66);
+		if (this.messages.get(position).isErrorMessage())
+			messageView.setBackgroundColor(0xFFFF0000);
 
 		return messageView;
 	}

@@ -22,5 +22,6 @@
     <string name="name_empty">Please fill in a name</string>
     <string name="dialog.register">registering...</string>
     <string name="dialog_deregister">deregistering...</string>
+    <string name="missing_message">Here are some messages missing!</string>
 
 </resources>

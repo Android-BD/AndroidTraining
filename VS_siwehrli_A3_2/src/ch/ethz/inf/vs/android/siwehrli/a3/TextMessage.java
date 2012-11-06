@@ -19,6 +19,20 @@ public class TextMessage implements Comparable<TextMessage> {
 	private String message;
 	private Map<Integer, Integer> vectorTime = null;
 	private static final boolean LAMPORT_MODE = true;
+	private boolean isDelayedPublished = false;
+	private boolean isErrorMessage = false;
+
+	public boolean isDelayedPublished() {
+		return isDelayedPublished;
+	}
+
+	public boolean isErrorMessage() {
+		return isErrorMessage;
+	}
+
+	public void setDelayedPublished() {
+		this.isDelayedPublished = true;
+	}
 
 	public TextMessage(String message, int lamportTime) {
 		this.message = message;
@@ -98,6 +112,16 @@ public class TextMessage implements Comparable<TextMessage> {
 		}
 	}
 
+	public boolean isDeliverable(Map<Integer, Integer> currentVectorTime) {
+		// TODO Frederik
+		return this.getLamportTime() - currentVectorTime.get(0) <= 1;
+	}
+
+	public boolean isDelayed(Map<Integer, Integer> currentVectorTime) {
+		// TODO Frederik
+		return this.getLamportTime() - currentVectorTime.get(0) < 0;
+	}
+
 	/**
 	 * This parses the time vector out of a JSON-Object
 	 * 
@@ -133,5 +157,10 @@ public class TextMessage implements Comparable<TextMessage> {
 			object.put(i + "", timeVector.get(i));
 		}
 		return object;
+	}
+
+	public void setErrorType() {
+		this.isErrorMessage = true;
+
 	}
 }
