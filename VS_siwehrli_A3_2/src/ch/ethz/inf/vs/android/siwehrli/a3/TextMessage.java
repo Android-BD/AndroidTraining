@@ -1,15 +1,48 @@
 package ch.ethz.inf.vs.android.siwehrli.a3;
 
+import java.util.HashMap;
 import java.util.Map;
 
-public class TextMessage implements Comparable<TextMessage>{
-	public String message;
-	public int timestamp;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * The propose of this class is to represent a textmessage with associated
+ * lamport and vector time in a generic way. It provides functions to parse from
+ * and into coresponding JSON-objects.
+ * 
+ * @author Simon
+ * 
+ */
+public class TextMessage implements Comparable<TextMessage> {
+	private String message;
 	private Map<Integer, Integer> vectorTime = null;
-	
-	public TextMessage(String message, int timestamp){
-		this.message=message;
-		this.timestamp=timestamp;
+	private static final boolean LAMPORT_MODE = true;
+
+	public TextMessage(String message, int lamportTime) {
+		this.message = message;
+		this.vectorTime = new HashMap<Integer, Integer>(1);
+		this.vectorTime.put(0, lamportTime);
+	}
+
+	public TextMessage(String message, Map<Integer, Integer> vectorTime) {
+		this.message = message;
+		this.vectorTime = vectorTime;
+	}
+
+	public TextMessage(JSONObject jsonMessage) throws JSONException {
+		this.message = jsonMessage.getString("message");
+		this.vectorTime = readTimeVector(jsonMessage
+				.getJSONObject("time_vector"));
+	}
+
+	public JSONObject getJSONObject() throws JSONException {
+		JSONObject object = new JSONObject();
+		object.put("text", message);
+		object.put("lamport_time",
+				getVectorTimeJSONObject(this.getVectorTime()));
+		return object;
 	}
 
 	public String getFormatedMessage() {
@@ -17,11 +50,62 @@ public class TextMessage implements Comparable<TextMessage>{
 	}
 
 	public String getFormatedTime() {
-		return timestamp +"";
+		if (LAMPORT_MODE) {
+			return this.vectorTime.get(0) + "";
+		} else {
+			// TODO Frederik
+			return null;
+		}
+	}
+
+	public int getLamportTime() {
+		return this.vectorTime.get(0);
+	}
+
+	public Map<Integer, Integer> getVectorTime() {
+		return this.vectorTime;
 	}
 
 	@Override
 	public int compareTo(TextMessage another) {
-		return this.timestamp-another.timestamp;
+		if (LAMPORT_MODE) {
+			return this.getLamportTime() - another.getLamportTime();
+		} else {
+			// TODO Frederik
+			return 0;
+		}
+	}
+
+	/**
+	 * This parses the time vector out of a JSON-Object
+	 * @param o, the JSON-(sub-)object holding the time vector
+	 * @return the vector time as a map
+	 * @throws JSONException
+	 */
+	public static Map<Integer, Integer> readTimeVector(JSONObject o)
+			throws JSONException {
+		JSONArray names = o.names();
+		Map<Integer, Integer> map = new HashMap<Integer, Integer>(
+				names.length());
+
+		for (int i = 0; i < names.length(); ++i) {
+			map.put(names.getInt(i), o.getInt(names.getString(i)));
+		}
+		return map;
+	}
+
+	/**
+	 * This builds a JSONObject representing the vector time (and only the vector!)
+	 * @param timeVector
+	 * @return JSON-Object representation
+	 * @throws JSONException
+	 */
+	public static JSONObject getVectorTimeJSONObject(
+			Map<Integer, Integer> timeVector) throws JSONException {
+		JSONObject object = new JSONObject();
+		for (int i : timeVector.keySet()) {
+			object.put(i + "", timeVector.get(i));
+		}
+		return object;
 	}
 }

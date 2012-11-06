@@ -109,9 +109,6 @@ public class MainActivity extends Activity {
 			if (!message.equals("")) {
 				SendTask task = new SendTask();
 				task.execute(message);
-				if (task.isSent()) {
-					editMessage.setText("");
-				}
 			} else {
 				Toast.makeText(this, R.string.message_empty, TOAST_DURATION)
 						.show();
@@ -147,19 +144,6 @@ public class MainActivity extends Activity {
 		object.put("cmd", "info");
 
 		return object.toString();
-	}
-
-	public static Map<Integer, Integer> readTimeVector(JSONObject o)
-			throws JSONException {
-		JSONObject jsonTimeVector = o.getJSONObject("time_vector");
-		JSONArray names = jsonTimeVector.names();
-		Map<Integer, Integer> map = new HashMap<Integer, Integer>(
-				names.length());
-
-		for (int i = 0; i < names.length(); ++i) {
-			map.put(names.getInt(i), jsonTimeVector.getInt(names.getString(i)));
-		}
-		return map;
 	}
 
 	private class RegisterTask extends AsyncTask<Void, Void, Boolean> {
@@ -246,9 +230,9 @@ public class MainActivity extends Activity {
 				JSONObject jsonAnswer = new JSONObject(answer);
 				String success = jsonAnswer.getString("success");
 				if (success.equals("reg_ok")) {
-					// used only in Task 3
 					index = Integer.parseInt(jsonAnswer.getString("index"));
-					initialTimeVector = readTimeVector(jsonAnswer);
+					initialTimeVector = TextMessage.readTimeVector(jsonAnswer
+							.getJSONObject("time_vector"));
 					socket.close();
 					return true;
 				} else {
@@ -327,6 +311,9 @@ public class MainActivity extends Activity {
 		protected void onPostExecute(Boolean result) {
 			registered = result;
 
+			EditText editName = (EditText) findViewById(R.id.editName);
+			editName.setEnabled(!result);
+
 			ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonRegister);
 			tb.setChecked(result);
 
@@ -350,8 +337,12 @@ public class MainActivity extends Activity {
 		 * return if message successfully sent
 		 */
 		protected Boolean doInBackground(String... args) {
-			String message = args[0];
-			Log.d(LOG_TAG, "Send message: " + message);
+			Log.d(LOG_TAG, "Send message: " + args[0]);
+
+			// Time logic // TODO Frederik edit here
+			TextMessage message = new TextMessage(args[0], initialTimeVector); // time logic edit here!
+
+			// sending message
 			DatagramSocket socket;
 			try {
 				socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
@@ -359,10 +350,9 @@ public class MainActivity extends Activity {
 				InetAddress to = InetAddress.getByName(HOST_NAME);
 
 				// build JSON
-				JSONObject object = new JSONObject();
-				object.put("cmd", "message");
-				object.put("text", message);
-				String request = object.toString();
+				JSONObject jsonMessage = message.getJSONObject();
+				jsonMessage.put("cmd", "message");
+				String request = jsonMessage.toString();
 				Log.d(LOG_TAG, "Sending: " + request);
 
 				// send packet
@@ -373,7 +363,7 @@ public class MainActivity extends Activity {
 				socket.close();
 
 				// only add message to view if sent to the server successful
-				messages.add(new TextMessage(message, initialTimeVector.get(0)));
+				messages.add(message);
 				return true;
 			} catch (SocketException e) {
 				Log.e(LOG_TAG, e.getMessage());
@@ -391,9 +381,11 @@ public class MainActivity extends Activity {
 			if (!result)
 				Toast.makeText(MainActivity.this,
 						R.string.message_sending_failed, TOAST_DURATION).show();
-			else
+			else{
 				adapter.notifyDataSetChanged();
-
+				EditText editMessage = (EditText) findViewById(R.id.editMessage);
+				editMessage.setText("");
+			}
 			this.ok = result;
 
 		}
