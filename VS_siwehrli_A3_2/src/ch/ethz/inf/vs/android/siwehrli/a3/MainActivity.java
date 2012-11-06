@@ -17,6 +17,7 @@ import org.json.JSONObject;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.SharedPreferences;
@@ -37,9 +38,18 @@ public class MainActivity extends Activity {
 	private static final int CHAT_SERVER_PORT = 4001;
 	private static final int TOAST_DURATION = Toast.LENGTH_SHORT;
 	private static final int PACKET_SIZE = 1024;
-	private static final int REGISTRATION_TIMEOUT = 5000;
+	private static final int REGISTRATION_TIMEOUT = 10000;
+	private static final int MESSAGE_RECEIVE_TIMEOUT = 2000;
+
 	private static final String SETTINGS_NAME = "Settings";
 	private MyArrayAdapter adapter;
+	private ReceiveTask receiveTask = new ReceiveTask();
+
+	/**
+	 * On the handler it's possible to post Runnables to be executed by the GUI
+	 * thread
+	 */
+	private Handler handler;
 
 	// data structure for holding messages
 	ArrayList<TextMessage> messages = new ArrayList<TextMessage>();
@@ -68,6 +78,9 @@ public class MainActivity extends Activity {
 		this.userName = settings.getString("user_name", "");
 		EditText editName = (EditText) findViewById(R.id.editName);
 		editName.setText(this.userName);
+
+		// initial handler with this thread (GUI thread!)
+		handler = new Handler();
 	}
 
 	@Override
@@ -90,6 +103,8 @@ public class MainActivity extends Activity {
 			editor.putString("user_name", this.userName);
 			editor.commit(); // Commit changes to file!!!
 		}
+
+		this.receiveTask.cancel(false);
 	}
 
 	public void onClickRegister(View view) {
@@ -320,6 +335,10 @@ public class MainActivity extends Activity {
 			Toast.makeText(getApplicationContext(), this.toastID,
 					TOAST_DURATION).show();
 
+			// start listening for messages
+			receiveTask = new ReceiveTask();
+			receiveTask.execute();
+
 			progressDialog.dismiss();
 
 		}
@@ -340,7 +359,10 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Send message: " + args[0]);
 
 			// Time logic // TODO Frederik edit here
-			TextMessage message = new TextMessage(args[0], initialTimeVector); // time logic edit here!
+			TextMessage message = new TextMessage(args[0], initialTimeVector); // time
+																				// logic
+																				// edit
+																				// here!
 
 			// sending message
 			DatagramSocket socket;
@@ -381,13 +403,70 @@ public class MainActivity extends Activity {
 			if (!result)
 				Toast.makeText(MainActivity.this,
 						R.string.message_sending_failed, TOAST_DURATION).show();
-			else{
+			else {
 				adapter.notifyDataSetChanged();
 				EditText editMessage = (EditText) findViewById(R.id.editMessage);
 				editMessage.setText("");
 			}
 			this.ok = result;
 
+		}
+	}
+
+	private class ReceiveTask extends AsyncTask<Void, Void, Void> {
+		@Override
+		protected Void doInBackground(Void... args) {
+			Log.d(LOG_TAG, "Start receiving messages");
+
+			// receiving messages
+			DatagramSocket socket = null;
+			try {
+				socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
+				socket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
+			} catch (SocketException e) {
+				Log.e(LOG_TAG, e.getMessage());
+			}
+
+			if (socket != null) {
+				// Receive
+				byte[] data;
+				DatagramPacket pack;
+				while (!this.isCancelled()) {
+					try {
+						data = new byte[PACKET_SIZE];
+						pack = new DatagramPacket(data, PACKET_SIZE);
+						socket.receive(pack);
+
+						String answer = new String(pack.getData(), 0,
+								pack.getLength());
+						Log.d(LOG_TAG, "Received message: " + answer);
+
+						// parse
+						TextMessage message = new TextMessage(new JSONObject(
+								answer), initialTimeVector);
+						messages.add(message);
+						handler.post(new Runnable() {
+
+							@Override
+							public void run() {
+								adapter.notifyDataSetChanged();
+							}
+						});
+
+					} catch (SocketException e) {
+						Log.e(LOG_TAG, e.getMessage());
+					} catch (IOException e) {
+						Log.e(LOG_TAG, e.getMessage());
+					} catch (JSONException e) {
+						Log.e(LOG_TAG, e.getMessage());
+					} 
+				}
+			}
+
+			socket.close();
+			
+			Log.d(LOG_TAG, "Stop receiving messages");
+			return null;
 		}
 	}
 }

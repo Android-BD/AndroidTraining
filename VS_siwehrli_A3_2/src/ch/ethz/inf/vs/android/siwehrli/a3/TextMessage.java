@@ -31,10 +31,32 @@ public class TextMessage implements Comparable<TextMessage> {
 		this.vectorTime = vectorTime;
 	}
 
-	public TextMessage(JSONObject jsonMessage) throws JSONException {
+	public TextMessage(JSONObject jsonMessage, int backupLamportTime)
+			throws JSONException {
 		this.message = jsonMessage.getString("message");
-		this.vectorTime = readTimeVector(jsonMessage
-				.getJSONObject("time_vector"));
+		// it's possible that there is no time vector
+		if (jsonMessage.has("time_vector"))
+			this.vectorTime = readTimeVector(jsonMessage
+					.getJSONObject("time_vector"));
+		else {
+
+			Map<Integer, Integer> backupVectorTime = new HashMap<Integer, Integer>(
+					1);
+			backupVectorTime.put(0, backupLamportTime);
+			this.vectorTime = backupVectorTime;
+		}
+
+	}
+
+	public TextMessage(JSONObject jsonMessage,
+			Map<Integer, Integer> backupVectorTime) throws JSONException {
+		this.message = jsonMessage.getString("text");
+		// it's possible that there is no time vector
+		if (jsonMessage.has("time_vector"))
+			this.vectorTime = readTimeVector(jsonMessage
+					.getJSONObject("time_vector"));
+		else
+			this.vectorTime = backupVectorTime;
 	}
 
 	public JSONObject getJSONObject() throws JSONException {
@@ -78,7 +100,9 @@ public class TextMessage implements Comparable<TextMessage> {
 
 	/**
 	 * This parses the time vector out of a JSON-Object
-	 * @param o, the JSON-(sub-)object holding the time vector
+	 * 
+	 * @param o
+	 *            , the JSON-(sub-)object holding the time vector
 	 * @return the vector time as a map
 	 * @throws JSONException
 	 */
@@ -95,7 +119,9 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	/**
-	 * This builds a JSONObject representing the vector time (and only the vector!)
+	 * This builds a JSONObject representing the vector time (and only the
+	 * vector!)
+	 * 
 	 * @param timeVector
 	 * @return JSON-Object representation
 	 * @throws JSONException
