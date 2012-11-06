@@ -45,6 +45,8 @@ public class MainActivity extends Activity {
 	private MyArrayAdapter adapter;
 	private ReceiveTask receiveTask = new ReceiveTask();
 
+	private DatagramSocket socket = null;
+
 	/**
 	 * On the handler it's possible to post Runnables to be executed by the GUI
 	 * thread
@@ -79,6 +81,13 @@ public class MainActivity extends Activity {
 		EditText editName = (EditText) findViewById(R.id.editName);
 		editName.setText(this.userName);
 
+		try {
+			socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
+			socket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
+		} catch (SocketException e) {
+			Log.e(LOG_TAG, e.getMessage());
+		}
+
 		// initial handler with this thread (GUI thread!)
 		handler = new Handler();
 	}
@@ -103,6 +112,8 @@ public class MainActivity extends Activity {
 			editor.putString("user_name", this.userName);
 			editor.commit(); // Commit changes to file!!!
 		}
+		
+		socket.close();
 
 		this.receiveTask.cancel(false);
 	}
@@ -336,8 +347,19 @@ public class MainActivity extends Activity {
 					TOAST_DURATION).show();
 
 			// start listening for messages
-			receiveTask = new ReceiveTask();
-			receiveTask.execute();
+			if (result) {
+				if(receiveTask.getStatus()==AsyncTask.Status.PENDING)
+				receiveTask.execute();
+				else if(receiveTask.getStatus()==AsyncTask.Status.FINISHED){
+					receiveTask=new ReceiveTask();
+					receiveTask.execute();
+				}
+			}
+			else
+			{
+				receiveTask.cancel(false);
+				receiveTask=new ReceiveTask(); // make ready for next time
+			}
 
 			progressDialog.dismiss();
 
@@ -365,10 +387,7 @@ public class MainActivity extends Activity {
 																				// here!
 
 			// sending message
-			DatagramSocket socket;
 			try {
-				socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
-
 				InetAddress to = InetAddress.getByName(HOST_NAME);
 
 				// build JSON
@@ -382,7 +401,6 @@ public class MainActivity extends Activity {
 				DatagramPacket packet = new DatagramPacket(data, data.length,
 						to, CHAT_SERVER_PORT);
 				socket.send(packet);
-				socket.close();
 
 				// only add message to view if sent to the server successful
 				messages.add(message);
@@ -419,14 +437,6 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Start receiving messages");
 
 			// receiving messages
-			DatagramSocket socket = null;
-			try {
-				socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
-				socket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
-			} catch (SocketException e) {
-				Log.e(LOG_TAG, e.getMessage());
-			}
-
 			if (socket != null) {
 				// Receive
 				byte[] data;
@@ -459,12 +469,10 @@ public class MainActivity extends Activity {
 						Log.e(LOG_TAG, e.getMessage());
 					} catch (JSONException e) {
 						Log.e(LOG_TAG, e.getMessage());
-					} 
+					}
 				}
 			}
 
-			socket.close();
-			
 			Log.d(LOG_TAG, "Stop receiving messages");
 			return null;
 		}
