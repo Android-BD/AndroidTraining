@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
 	private MyArrayAdapter adapter;
 	private ReceiveTask receiveTask = new ReceiveTask();
 
-	private DatagramSocket socket = null;
+	private DatagramSocket messageSocket = null;
 
 	/**
 	 * On the handler it's possible to post Runnables to be executed by the GUI
@@ -82,8 +82,8 @@ public class MainActivity extends Activity {
 		editName.setText(this.userName);
 
 		try {
-			socket = new DatagramSocket(CHAT_LOCALHOST_PORT);
-			socket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
+			messageSocket = new DatagramSocket(CHAT_LOCALHOST_PORT);
+			messageSocket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
 		} catch (SocketException e) {
 			Log.e(LOG_TAG, e.getMessage());
 		}
@@ -113,8 +113,6 @@ public class MainActivity extends Activity {
 			editor.commit(); // Commit changes to file!!!
 		}
 		
-		socket.close();
-
 		this.receiveTask.cancel(false);
 	}
 
@@ -400,7 +398,7 @@ public class MainActivity extends Activity {
 				byte[] data = request.getBytes();
 				DatagramPacket packet = new DatagramPacket(data, data.length,
 						to, CHAT_SERVER_PORT);
-				socket.send(packet);
+				messageSocket.send(packet);
 
 				// only add message to view if sent to the server successful
 				messages.add(message);
@@ -437,7 +435,7 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Start receiving messages");
 
 			// receiving messages
-			if (socket != null) {
+			if (messageSocket != null) {
 				// Receive
 				byte[] data;
 				DatagramPacket pack;
@@ -445,7 +443,7 @@ public class MainActivity extends Activity {
 					try {
 						data = new byte[PACKET_SIZE];
 						pack = new DatagramPacket(data, PACKET_SIZE);
-						socket.receive(pack);
+						messageSocket.receive(pack);
 
 						String answer = new String(pack.getData(), 0,
 								pack.getLength());
@@ -455,13 +453,6 @@ public class MainActivity extends Activity {
 						TextMessage message = new TextMessage(new JSONObject(
 								answer), initialTimeVector);
 						messages.add(message);
-						handler.post(new Runnable() {
-
-							@Override
-							public void run() {
-								adapter.notifyDataSetChanged();
-							}
-						});
 
 					} catch (SocketException e) {
 						Log.e(LOG_TAG, e.getMessage());
@@ -473,8 +464,15 @@ public class MainActivity extends Activity {
 				}
 			}
 
+			messageSocket.close();
+			
 			Log.d(LOG_TAG, "Stop receiving messages");
 			return null;
+		}
+		
+		@Override
+		protected void onPostExecute(Void result) {
+			adapter.notifyDataSetChanged();
 		}
 	}
 }
