@@ -2,6 +2,8 @@ package ch.ethz.inf.vs.android.siwehrli.a3;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -10,7 +12,7 @@ import org.json.JSONObject;
 /**
  * The propose of this class is to represent a textmessage with associated
  * lamport and vector time in a generic way. It provides functions to parse from
- * and into coresponding JSON-objects.
+ * and into corresponding JSON-objects.
  * 
  * @author Simon
  * 
@@ -18,7 +20,7 @@ import org.json.JSONObject;
 public class TextMessage implements Comparable<TextMessage> {
 	private String message;
 	private String senderName = "unknown";
-	
+
 	public String getSenderName() {
 		return senderName;
 	}
@@ -46,14 +48,32 @@ public class TextMessage implements Comparable<TextMessage> {
 		this.vectorTime.put(0, lamportTime);
 	}
 
+	public TextMessage(String message, String sender, int lamportTime) {
+		this.message = message;
+		this.senderName = sender;
+		this.vectorTime = new HashMap<Integer, Integer>(1);
+		this.vectorTime.put(0, lamportTime);
+	}
+
 	public TextMessage(String message, Map<Integer, Integer> vectorTime) {
 		this.message = message;
+		this.vectorTime = vectorTime;
+	}
+
+	public TextMessage(String message, String sender,
+			Map<Integer, Integer> vectorTime) {
+		this.message = message;
+		this.senderName = sender;
 		this.vectorTime = vectorTime;
 	}
 
 	public TextMessage(JSONObject jsonMessage, int backupLamportTime)
 			throws JSONException {
 		this.message = jsonMessage.getString("message");
+
+		if (jsonMessage.has("sender")) {
+			this.senderName = jsonMessage.getString("sender");
+		}
 		// it's possible that there is no time vector
 		if (jsonMessage.has("time_vector"))
 			this.vectorTime = readTimeVector(jsonMessage
@@ -71,17 +91,23 @@ public class TextMessage implements Comparable<TextMessage> {
 	public TextMessage(JSONObject jsonMessage,
 			Map<Integer, Integer> backupVectorTime) throws JSONException {
 		this.message = jsonMessage.getString("text");
+
+		if (jsonMessage.has("sender")) {
+			this.senderName = jsonMessage.getString("sender");
+		}
 		// it's possible that there is no time vector
-		if (jsonMessage.has("time_vector"))
+		if (jsonMessage.has("time_vector")) {
 			this.vectorTime = readTimeVector(jsonMessage
 					.getJSONObject("time_vector"));
-		else
+		} else {
 			this.vectorTime = backupVectorTime;
+		}
 	}
 
 	public JSONObject getJSONObject() throws JSONException {
 		JSONObject object = new JSONObject();
 		object.put("text", message);
+		object.put("sender", senderName);
 		object.put("lamport_time",
 				getVectorTimeJSONObject(this.getVectorTime()));
 		return object;
@@ -101,7 +127,11 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	public int getLamportTime() {
-		return this.vectorTime.get(0);
+		if (vectorTime != null) {
+			return this.vectorTime.get(0);
+		} else {
+			return 0;
+		}
 	}
 
 	public Map<Integer, Integer> getVectorTime() {
@@ -109,22 +139,69 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	public int compareTo(TextMessage another) {
-		if (LAMPORT_MODE) {
-			return this.getLamportTime() - another.getLamportTime();
-		} else {
-			// TODO Frederik
+		if (another.vectorTime == null || vectorTime == null) {
 			return 0;
+		} else if (LAMPORT_MODE) {
+			return (vectorTime.get(0) - another.vectorTime.get(0));
+		} else {
+			// collect time vector differences
+			int min = 0;
+			int max = 0;
+			Set<Entry<Integer, Integer>> current_set = another.vectorTime
+					.entrySet();
+			for (Entry<Integer, Integer> entry : current_set) {
+				if (entry.getKey() != 0) {
+					Integer vectorTimeScalar = vectorTime.get(entry.getKey());
+					if (vectorTimeScalar != null) {
+						int comp = vectorTimeScalar - entry.getValue();
+						if (comp < min) {
+							min = comp;
+						} else if (comp > max) {
+							max = comp;
+						}
+					}
+				}
+			}
+			if (min < 0 && max == 0) {
+				return min;
+			} else if (max > 0 && min == 0) {
+				return max;
+			} else {
+				return 0;
+			}
 		}
 	}
 
+	// method to determine if a message is on time
+	// if in doubt assume on time (to allow more messages to be displayed)
 	public boolean isDeliverable(Map<Integer, Integer> currentVectorTime) {
-		// TODO Frederik
-		return this.getLamportTime() - currentVectorTime.get(0) <= 1;
+		
+		TextMessage dummyMessage = new TextMessage("", currentVectorTime);
+		int comp = this.compareTo(dummyMessage);
+		
+		if(comp <= 1)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
+	// determine if too late (if unknown, assume message on time)
 	public boolean isDelayed(Map<Integer, Integer> currentVectorTime) {
-		// TODO Frederik
-		return this.getLamportTime() - currentVectorTime.get(0) < 0;
+		TextMessage dummyMessage = new TextMessage("", currentVectorTime);
+		int comp = this.compareTo(dummyMessage);
+		
+		if(comp < -1)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 	/**

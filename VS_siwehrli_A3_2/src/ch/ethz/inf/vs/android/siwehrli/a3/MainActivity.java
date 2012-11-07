@@ -10,8 +10,11 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import org.json.JSONArray;
@@ -22,6 +25,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.os.Looper;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.SharedPreferences;
@@ -42,7 +46,8 @@ public class MainActivity extends Activity {
 	private static final int PACKET_SIZE = 1024;
 	private static final int REGISTRATION_TIMEOUT = 10000;
 	private static final int MESSAGE_RECEIVE_TIMEOUT = 2000;
-	private static final int MESSAGE_DELIVERY_TIMEOUT = 10000;
+	private static final int MESSAGE_DELIVERY_TIMEOUT = 5000;
+	private static final boolean LAMPORT_MODE = true;
 
 	private static final String SETTINGS_NAME = "Settings";
 	private MyArrayAdapter adapter;
@@ -71,12 +76,11 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 
 		ListView listView = (ListView) findViewById(R.id.listViewMessages);
-		messages.add(new TextMessage("Hello testmessage", 54));
 
 		// Assign adapter to ListView
 		adapter = new MyArrayAdapter(this, messages);
 		listView.setAdapter(adapter);
-
+		
 		// read settings into private fields
 		SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
 				MODE_PRIVATE);
@@ -122,8 +126,10 @@ public class MainActivity extends Activity {
 			editor.putString("user_name", this.userName);
 			editor.commit(); // Commit changes to file!!!
 		}
+		// give the listening thread a chance to exit gracefully
 
-		this.receiveTask.cancel(false);
+		// then kill it, if its still running
+		receiveTask.stop();
 	}
 
 	public void onClickRegister(View view) {
@@ -143,6 +149,7 @@ public class MainActivity extends Activity {
 			if (!message.equals("")) {
 				SendTask task = new SendTask();
 				task.execute(message);
+				Log.d(LOG_TAG, task.getStatus().toString());
 			} else {
 				Toast.makeText(this, R.string.message_empty, TOAST_DURATION)
 						.show();
@@ -185,6 +192,7 @@ public class MainActivity extends Activity {
 		String userName;
 		int toastID = R.string.hello_world;
 		private boolean registering;
+		private boolean regBool;
 
 		public RegisterTask(String userName, boolean register) {
 			this.userName = userName;
@@ -193,7 +201,7 @@ public class MainActivity extends Activity {
 
 		@Override
 		protected void onPreExecute() {
-
+			regBool = registered;
 			if (registering)
 				progressDialog = ProgressDialog.show(MainActivity.this, "",
 						getResources().getString(R.string.dialog_register));
@@ -259,7 +267,7 @@ public class MainActivity extends Activity {
 						to, REGISTER_PORT);
 
 				socket.send(packet);
-
+				Log.d(LOG_TAG, "register sent");
 				// Receive
 				data = new byte[PACKET_SIZE];
 				DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
@@ -275,6 +283,7 @@ public class MainActivity extends Activity {
 					currentVectorTime = TextMessage.readTimeVector(jsonAnswer
 							.getJSONObject("time_vector"));
 					socket.close();
+					regBool = true;
 					return true;
 				} else {
 					socket.close();
@@ -334,10 +343,9 @@ public class MainActivity extends Activity {
 				String success = jsonAnswer.getString("success");
 				if (success.equals("dreg_ok")) {
 					socket.close();
-					return false;
+					regBool = false;
 				} else {
 					socket.close();
-					return true;
 				}
 			} catch (SocketTimeoutException e) {
 				Log.d(LOG_TAG, "timeout");
@@ -353,35 +361,29 @@ public class MainActivity extends Activity {
 				socket.close();
 			}
 
-			return true;
+			return regBool;
 		}
 
 		@Override
 		protected void onPostExecute(Boolean result) {
-			registered = result;
+			Log.d(LOG_TAG, "" + regBool);
+			registered = regBool;
 
 			EditText editName = (EditText) findViewById(R.id.editName);
-			editName.setEnabled(!result);
+			editName.setEnabled(regBool);
 
 			ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonRegister);
-			tb.setChecked(result);
+			tb.setChecked(regBool);
 
 			Toast.makeText(getApplicationContext(), this.toastID,
 					TOAST_DURATION).show();
 
 			// start listening for messages
-			if (result) {
-				if (receiveTask.getStatus() == AsyncTask.Status.PENDING)
-					receiveTask.execute();
-				else if (receiveTask.getStatus() == AsyncTask.Status.FINISHED) {
-					receiveTask = new ReceiveTask();
-					receiveTask.execute();
+			if (regBool) {
+				if (!receiveTask.isAlive()) {
+					receiveTask.start();
 				}
-			} else {
-				receiveTask.cancel(false);
-				receiveTask = new ReceiveTask(); // make ready for next time
 			}
-
 			progressDialog.dismiss();
 
 		}
@@ -399,15 +401,13 @@ public class MainActivity extends Activity {
 		 * return if message successfully sent
 		 */
 		protected Boolean doInBackground(String... args) {
-			Log.d(LOG_TAG, "Send message: " + args[0]);
-
-			// Time logic // TODO Frederik edit here
+			// Time logic
 			TextMessage message;
 			synchronized (currentVectorTime) {
 				currentVectorTime.put(0, currentVectorTime.get(0) + 1);
-				message = new TextMessage(args[0], currentVectorTime);
+				message = new TextMessage(args[0], userName, currentVectorTime);
 			}
-
+			Log.d(LOG_TAG, "Send message: " + message.getFormatedMessage());
 			// sending message
 			try {
 				InetAddress to = InetAddress.getByName(HOST_NAME);
@@ -426,6 +426,7 @@ public class MainActivity extends Activity {
 
 				// only add message to view if sent to the server successful
 				messages.add(message);
+				publishProgress();
 				return true;
 			} catch (SocketException e) {
 				Log.e(LOG_TAG, e.getMessage());
@@ -439,12 +440,16 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
+		protected void onProgressUpdate(Void... values) {
+			adapter.notifyDataSetChanged();
+		}
+
+		@Override
 		protected void onPostExecute(Boolean result) {
 			if (!result)
 				Toast.makeText(MainActivity.this,
 						R.string.message_sending_failed, TOAST_DURATION).show();
 			else {
-				adapter.notifyDataSetChanged();
 				EditText editMessage = (EditText) findViewById(R.id.editMessage);
 				editMessage.setText("");
 			}
@@ -453,16 +458,17 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private class ReceiveTask extends AsyncTask<Void, Void, Void> {
+	private class ReceiveTask extends Thread {
+
 		@Override
-		protected Void doInBackground(Void... args) {
+		public void run() {
 			Log.d(LOG_TAG, "Start receiving messages");
 
 			// receiving messages
 			// Receive
 			byte[] data;
 			DatagramPacket pack;
-			while (!this.isCancelled()) {
+			while (registered) {
 				try {
 					data = new byte[PACKET_SIZE];
 					pack = new DatagramPacket(data, PACKET_SIZE);
@@ -473,62 +479,60 @@ public class MainActivity extends Activity {
 					Log.d(LOG_TAG, "Received message: " + answer);
 
 					// parse
-					final TextMessage message = new TextMessage(new JSONObject(
+					TextMessage message = new TextMessage(new JSONObject(
 							answer), currentVectorTime);
-
-					// time logic // TODO Frederik
-					if (message.isDeliverable(currentVectorTime) || true) {
-						messages.add(message);
-						publishProgress();
+					
+					//use compare to via dummy message
+					final TextMessage compareMessage = new TextMessage("",
+							currentVectorTime);
+					
+					//compare to current time
+					int comp = message.compareTo(compareMessage);
+					if (comp <= 1) {
+						deliverMessage(message);
 					} else {
+						Log.d(LOG_TAG,"messega not deliverable");
+						message.setDelayedPublished();
 						waitingMessages.put(message);
-
-						// start timeout (is this the GUI-Thread?!)
-						new CountDownTimer(MESSAGE_DELIVERY_TIMEOUT, 1000) {
-
-							public void onTick(long millisUntilFinished) {
-								tryDelivery();
-							}
-
-							public void onFinish() {
-								if (!tryDelivery()) {
-									// timeout expired without message
-									// getting
-									// deliverable
-									deliverAnyway();
-								}
-
-							}
-
-							private boolean tryDelivery() {
-								if (message.isDeliverable(currentVectorTime)) {
-									if (waitingMessages.remove(message)) {
-										// message is still in queue
-										messages.add(message);
-									}
-									this.cancel();
-									return true;
-								} else {
-									return false;
-								}
-							}
-
-							private void deliverAnyway() {
-								TextMessage errorMessage = new TextMessage(
-										getResources().getString(
-												R.string.missing_message),
-										currentVectorTime);
-								errorMessage.setErrorType();
-								messages.add(errorMessage);
-								while (waitingMessages.peek() != message) {
-									messages.add(waitingMessages.poll());
-								}
-								messages.add(waitingMessages.poll());
-							}
-						}.start();
+						new TimeoutThread().start();
 					}
+					/*
+					
+					if (!LAMPORT_MODE) {
+						// update time vector (eg remove entries of people
+						// that left, and add new people)
+						if (message.getSenderName().equals("Server")) {
+							if (message.getFormatedMessage().contains(
+									"has left")) {
+								String parse_index = message
+										.getFormatedMessage().replaceAll(
+												"[\\w\\s]+\\(index\\s", "");
+								int index = Integer
+										.parseInt(parse_index.substring(0,
+												parse_index.length() - 1));
+
+								Log.d(LOG_TAG, "remove " + index
+										+ " from time vector");
+								currentVectorTime.remove(parse_index);
+							} else if (message.getFormatedMessage().contains(
+									"has joined")) {
+								String parse_index = message
+										.getFormatedMessage().replaceAll(
+												"[\\w\\s]+\\(index\\s", "");
+								int index = Integer
+										.parseInt(parse_index.substring(0,
+												parse_index.length() - 1));
+
+								Log.d(LOG_TAG, "add " + index
+										+ " to time vector");
+								currentVectorTime.put(index, message
+										.getVectorTime().get(index));
+							}
+						}
+					}
+					*/
+
 				} catch (SocketTimeoutException e) {
-					Log.d(LOG_TAG, "timeout");
 				} catch (SocketException e) {
 					Log.e(LOG_TAG, e.getMessage());
 				} catch (IOException e) {
@@ -542,17 +546,66 @@ public class MainActivity extends Activity {
 			messageSocket.close();
 
 			Log.d(LOG_TAG, "Stop receiving messages");
-			return null;
-		}
-
-		@Override
-		protected void onProgressUpdate(Void... values) {
-			adapter.notifyDataSetChanged();
-		}
-		
-		@Override
-		protected void onPostExecute(Void result) {
-			adapter.notifyDataSetChanged();
 		}
 	}
+
+	private class TimeoutThread extends Thread {
+
+		@Override
+		public void run() {
+			try {
+				sleep(MESSAGE_DELIVERY_TIMEOUT);
+				Log.d(LOG_TAG, "TimeoutThread woke up normally");
+			} catch (InterruptedException e) {
+				Log.d(LOG_TAG, e.getMessage());
+				Log.d(LOG_TAG, "TimeoutThread interrupted");
+			}
+
+			TextMessage message = waitingMessages.poll();
+			if (message != null) {
+				// just deliver the first message found
+				// this is enough since for every message in waitingMessages a new timeout thread is started
+				deliverMessage(message);
+			}
+
+		}
+
+	}
+
+	// message deliver (including notifying gui thread and handle time updates)
+	private void deliverMessage(final TextMessage message) {
+		int comp;
+		//update time if necessary
+		synchronized (currentVectorTime) {
+			final TextMessage compareMessage = new TextMessage("",
+					currentVectorTime);
+			comp = message.compareTo(compareMessage);
+			if (comp > 0) {
+				currentVectorTime = message.getVectorTime();
+			}
+		}
+		synchronized (messages) {
+			messages.add(message);
+			if (comp < -1) {
+				// sort to have the delayed message at the right
+				// position
+				Collections.sort(messages);
+			} else if (comp > 1) {
+				// show notification that a message may be missing since the
+				// time has jumped
+				TextMessage errorMessage = new TextMessage(getResources()
+						.getString(R.string.missing_message), currentVectorTime);
+				errorMessage.setErrorType();
+				messages.add(errorMessage);
+			}
+		}
+		
+		//notify gui
+		handler.post(new Runnable() {
+			public void run() {
+				adapter.notifyDataSetChanged();
+			}
+		});
+	}
+
 }

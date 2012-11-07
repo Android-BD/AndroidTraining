@@ -56,7 +56,10 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 		holder.textSenderName.setText(this.messages.get(position)
 				.getSenderName());
 		if (this.messages.get(position).isDelayedPublished())
+		{
 			messageView.setBackgroundColor(0xFFFFFF66);
+			holder.textSenderName.append(" (Delayed!)");
+		}
 		if (this.messages.get(position).isErrorMessage())
 			messageView.setBackgroundColor(0xFFFF0000);
 

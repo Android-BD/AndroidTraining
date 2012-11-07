@@ -22,6 +22,8 @@
     <string name="name_empty">Please fill in a name</string>
     <string name="dialog.register">registering...</string>
     <string name="dialog_deregister">deregistering...</string>
-    <string name="missing_message">Here are some messages missing!</string>
+    <string name="missing_message">Some messages may be missing!</string>
+    <string name="delayed_message">A delayed message has arrived!</string>
+    <string name="sender_app">Chat notification</string>
 
 </resources>
