@@ -22,6 +22,7 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 	static class ViewHolder {
 		public TextView textViewMessage;
 		public TextView textViewTime;
+		public TextView textSenderName;
 	}
 
 	@Override
@@ -41,6 +42,8 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 					.findViewById(R.id.textViewMessage);
 			viewHolder.textViewTime = (TextView) messageView
 					.findViewById(R.id.textViewTime);
+			viewHolder.textSenderName = (TextView) messageView
+					.findViewById(R.id.textSenderName);
 			messageView.setTag(viewHolder);
 		}
 
@@ -50,6 +53,8 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 				.getFormatedMessage());
 		holder.textViewTime.setText(this.messages.get(position)
 				.getFormatedTime());
+		holder.textSenderName.setText(this.messages.get(position)
+				.getSenderName());
 		if (this.messages.get(position).isDelayedPublished())
 			messageView.setBackgroundColor(0xFFFFFF66);
 		if (this.messages.get(position).isErrorMessage())

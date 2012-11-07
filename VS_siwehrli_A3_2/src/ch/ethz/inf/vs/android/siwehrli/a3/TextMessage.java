@@ -17,6 +17,12 @@ import org.json.JSONObject;
  */
 public class TextMessage implements Comparable<TextMessage> {
 	private String message;
+	private String senderName = "unknown";
+	
+	public String getSenderName() {
+		return senderName;
+	}
+
 	private Map<Integer, Integer> vectorTime = null;
 	private static final boolean LAMPORT_MODE = true;
 	private boolean isDelayedPublished = false;
