@@ -85,7 +85,6 @@ public class MainActivity extends Activity {
 		editName.setText(this.userName);
 
 		try {
-			messageSocket = new DatagramSocket(CHAT_PORT);
 			// create reusable socket
 			DatagramChannel channel = DatagramChannel.open();
 			messageSocket = channel.socket();
@@ -194,12 +193,14 @@ public class MainActivity extends Activity {
 
 		@Override
 		protected void onPreExecute() {
+
 			if (registering)
 				progressDialog = ProgressDialog.show(MainActivity.this, "",
 						getResources().getString(R.string.dialog_register));
 			else
 				progressDialog = ProgressDialog.show(MainActivity.this, "",
 						getResources().getString(R.string.dialog_deregister));
+
 		}
 
 		@Override
@@ -224,10 +225,10 @@ public class MainActivity extends Activity {
 
 			} else {
 				if (this.deregister()) {
-					this.toastID = R.string.deregister_ok;
+					this.toastID = R.string.deregister_failed;
 					return false;
 				} else {
-					this.toastID = R.string.deregister_failed;
+					this.toastID = R.string.deregister_ok;
 					return true;
 				}
 			}
@@ -279,7 +280,8 @@ public class MainActivity extends Activity {
 					socket.close();
 					return false;
 				}
-
+			} catch (SocketTimeoutException e) {
+				Log.d(LOG_TAG, "timeout");
 			} catch (SocketException e) {
 				Log.e(LOG_TAG, e.getMessage());
 			} catch (IOException e) {
@@ -337,7 +339,8 @@ public class MainActivity extends Activity {
 					socket.close();
 					return true;
 				}
-
+			} catch (SocketTimeoutException e) {
+				Log.d(LOG_TAG, "timeout");
 			} catch (SocketException e) {
 				Log.e(LOG_TAG, e.getMessage());
 			} catch (IOException e) {
@@ -456,81 +459,84 @@ public class MainActivity extends Activity {
 			Log.d(LOG_TAG, "Start receiving messages");
 
 			// receiving messages
-			if (messageSocket != null) {
-				// Receive
-				byte[] data;
-				DatagramPacket pack;
-				while (!this.isCancelled()) {
-					try {
-						data = new byte[PACKET_SIZE];
-						pack = new DatagramPacket(data, PACKET_SIZE);
-						messageSocket.receive(pack);
+			// Receive
+			byte[] data;
+			DatagramPacket pack;
+			while (!this.isCancelled()) {
+				try {
+					data = new byte[PACKET_SIZE];
+					pack = new DatagramPacket(data, PACKET_SIZE);
+					messageSocket.receive(pack);
 
-						String answer = new String(pack.getData(), 0,
-								pack.getLength());
-						Log.d(LOG_TAG, "Received message: " + answer);
+					String answer = new String(pack.getData(), 0,
+							pack.getLength());
+					Log.d(LOG_TAG, "Received message: " + answer);
 
-						// parse
-						final TextMessage message = new TextMessage(
-								new JSONObject(answer), currentVectorTime);
+					// parse
+					final TextMessage message = new TextMessage(new JSONObject(
+							answer), currentVectorTime);
 
-						// time logic // TODO Frederik
-						if (message.isDeliverable(currentVectorTime)) {
-							messages.add(message);
-						} else {
-							waitingMessages.put(message);
+					// time logic // TODO Frederik
+					if (message.isDeliverable(currentVectorTime) || true) {
+						messages.add(message);
+						publishProgress();
+					} else {
+						waitingMessages.put(message);
 
-							// start timeout (is this the GUI-Thread?!)
-							new CountDownTimer(MESSAGE_DELIVERY_TIMEOUT, 1000) {
+						// start timeout (is this the GUI-Thread?!)
+						new CountDownTimer(MESSAGE_DELIVERY_TIMEOUT, 1000) {
 
-								public void onTick(long millisUntilFinished) {
-									tryDelivery();
+							public void onTick(long millisUntilFinished) {
+								tryDelivery();
+							}
+
+							public void onFinish() {
+								if (!tryDelivery()) {
+									// timeout expired without message
+									// getting
+									// deliverable
+									deliverAnyway();
 								}
 
-								public void onFinish() {
-									if (!tryDelivery()) {
-										// timeout expired without message
-										// getting
-										// deliverable
-										deliverAnyway();
-									}
+							}
 
+							private boolean tryDelivery() {
+								if (message.isDeliverable(currentVectorTime)) {
+									if (waitingMessages.remove(message)) {
+										// message is still in queue
+										messages.add(message);
+									}
+									this.cancel();
+									return true;
+								} else {
+									return false;
 								}
+							}
 
-								private boolean tryDelivery() {
-									if (message
-											.isDeliverable(currentVectorTime)) {
-										if (waitingMessages.remove(message)) {
-											// message is still in queue
-											messages.add(message);
-										}
-										this.cancel();
-										return true;
-									} else {
-										return false;
-									}
-								}
-								
-								private void deliverAnyway(){
-									TextMessage errorMessage = new TextMessage(getResources().getString(R.string.missing_message), currentVectorTime);
-									errorMessage.setErrorType();
-									messages.add(errorMessage);
-									while(waitingMessages.peek()!=message){
-										messages.add(waitingMessages.poll());
-									}
+							private void deliverAnyway() {
+								TextMessage errorMessage = new TextMessage(
+										getResources().getString(
+												R.string.missing_message),
+										currentVectorTime);
+								errorMessage.setErrorType();
+								messages.add(errorMessage);
+								while (waitingMessages.peek() != message) {
 									messages.add(waitingMessages.poll());
 								}
-							}.start();
-						}
-
-					} catch (SocketException e) {
-						Log.e(LOG_TAG, e.getMessage());
-					} catch (IOException e) {
-						Log.e(LOG_TAG, e.getMessage());
-					} catch (JSONException e) {
-						Log.e(LOG_TAG, e.getMessage());
+								messages.add(waitingMessages.poll());
+							}
+						}.start();
 					}
+				} catch (SocketTimeoutException e) {
+					Log.d(LOG_TAG, "timeout");
+				} catch (SocketException e) {
+					Log.e(LOG_TAG, e.getMessage());
+				} catch (IOException e) {
+					Log.e(LOG_TAG, e.getMessage());
+				} catch (JSONException e) {
+					Log.e(LOG_TAG, e.getMessage());
 				}
+
 			}
 
 			messageSocket.close();
@@ -539,6 +545,11 @@ public class MainActivity extends Activity {
 			return null;
 		}
 
+		@Override
+		protected void onProgressUpdate(Void... values) {
+			adapter.notifyDataSetChanged();
+		}
+		
 		@Override
 		protected void onPostExecute(Void result) {
 			adapter.notifyDataSetChanged();

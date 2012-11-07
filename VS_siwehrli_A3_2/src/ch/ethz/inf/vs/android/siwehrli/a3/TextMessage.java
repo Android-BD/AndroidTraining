@@ -102,7 +102,6 @@ public class TextMessage implements Comparable<TextMessage> {
 		return this.vectorTime;
 	}
 
-	@Override
 	public int compareTo(TextMessage another) {
 		if (LAMPORT_MODE) {
 			return this.getLamportTime() - another.getLamportTime();
