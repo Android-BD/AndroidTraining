@@ -4,11 +4,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
-
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
-
+
         <EditText
             android:id="@+id/editName"
             android:layout_width="wrap_content"
@@ -20,7 +20,7 @@
 
             <requestFocus />
         </EditText>
-
+
         <ToggleButton
             android:id="@+id/toggleButtonRegister"
             android:layout_width="wrap_content"
@@ -32,7 +32,7 @@
             android:textOn="@string/unregister" />
 
     </LinearLayout>
-
+
     <ListView
         android:id="@+id/listViewMessages"
         android:layout_width="match_parent"
@@ -41,11 +41,11 @@
         android:transcriptMode="alwaysScroll" >
 
     </ListView>
-
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
-
+
         <EditText
             android:id="@+id/editMessage"
             android:layout_width="wrap_content"
@@ -54,7 +54,7 @@
             android:ems="10"
             android:hint="@string/message_hint"
             android:inputType="textMultiLine" />
-
+
         <Button
             android:id="@+id/buttonSend"
             android:layout_width="wrap_content"
