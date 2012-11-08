@@ -1,0 +1,28 @@
+<resources>
+
+    <string name="app_name">VS_siwehrli_A3_3</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_main">Chat-Vectortime</string>
+    <string name="send">Send</string>
+    <string name="toggle_button_name">toggle_button</string>
+    <string name="register">Register</string>
+    <string name="unregister">Unregister</string>
+    <string name="register_ok">Registering successful</string>
+    <string name="register_failed">Registering failed</string>
+    <string name="message_send">Message sent</string>
+    <string name="message_failed">Message sending failed</string>
+    <string name="deregister_ok">Deregistering successful</string>
+    <string name="deregister_failed">Deregistering failed</string>
+    <string name="user_name_hint">Your name</string>
+    <string name="message_hint">Your message</string>
+    <string name="message_empty">Please fill in a message</string>
+    <string name="message_sending_failed">Message sending failed</string>
+    <string name="register_needed">Please register before sending messages</string>
+    <string name="name_empty">Please fill in a name</string>
+    <string name="dialog.register">registering...</string>
+    <string name="dialog_deregister">deregistering...</string>
+    <string name="missing_message">Some messages may be missing!</string>
+    <string name="delayed_message">A delayed message has arrived!</string>
+
+</resources>
