@@ -9,6 +9,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.util.Log;
+
 /**
  * The propose of this class is to represent a textmessage with associated
  * lamport and vector time in a generic way. It provides functions to parse from
@@ -57,14 +59,16 @@ public class TextMessage implements Comparable<TextMessage> {
 
 	public TextMessage(String message, Map<Integer, Integer> vectorTime) {
 		this.message = message;
-		this.vectorTime = vectorTime;
+		this.vectorTime = new HashMap<Integer, Integer>();
+		this.vectorTime.putAll(vectorTime);
 	}
 
 	public TextMessage(String message, String sender,
 			Map<Integer, Integer> vectorTime) {
 		this.message = message;
 		this.senderName = sender;
-		this.vectorTime = vectorTime;
+		this.vectorTime = new HashMap<Integer, Integer>();
+		this.vectorTime.putAll(vectorTime);
 	}
 
 	public TextMessage(JSONObject jsonMessage, int backupLamportTime)
@@ -79,7 +83,7 @@ public class TextMessage implements Comparable<TextMessage> {
 			this.vectorTime = readTimeVector(jsonMessage
 					.getJSONObject("time_vector"));
 		else {
-
+			Log.d("Chat","used backup time");
 			Map<Integer, Integer> backupVectorTime = new HashMap<Integer, Integer>(
 					1);
 			backupVectorTime.put(0, backupLamportTime);
@@ -100,7 +104,9 @@ public class TextMessage implements Comparable<TextMessage> {
 			this.vectorTime = readTimeVector(jsonMessage
 					.getJSONObject("time_vector"));
 		} else {
-			this.vectorTime = backupVectorTime;
+			Log.d("Chat","used backup time");
+			this.vectorTime = new HashMap<Integer, Integer>();
+			this.vectorTime.putAll(backupVectorTime);
 		}
 	}
 

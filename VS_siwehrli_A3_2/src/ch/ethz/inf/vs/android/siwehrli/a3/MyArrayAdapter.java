@@ -3,6 +3,7 @@ package ch.ethz.inf.vs.android.siwehrli.a3;
 import java.util.ArrayList;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,12 +58,17 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 				.getSenderName());
 		if (this.messages.get(position).isDelayedPublished())
 		{
-			messageView.setBackgroundColor(0xFFFFFF66);
+			messageView.setBackgroundColor(Color.YELLOW);
 			holder.textSenderName.append(" (Delayed!)");
 		}
-		if (this.messages.get(position).isErrorMessage())
-			messageView.setBackgroundColor(0xFFFF0000);
-
+		else if (this.messages.get(position).isErrorMessage())
+		{
+			messageView.setBackgroundColor(Color.RED);
+		}
+		else
+		{
+			messageView.setBackgroundColor(Color.LTGRAY);
+		}
 		return messageView;
 	}
 }
