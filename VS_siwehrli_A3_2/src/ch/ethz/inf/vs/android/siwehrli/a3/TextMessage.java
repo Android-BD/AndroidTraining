@@ -9,8 +9,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.util.Log;
-
 /**
  * The propose of this class is to represent a textmessage with associated
  * lamport and vector time in a generic way. It provides functions to parse from
@@ -28,6 +26,7 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	private Map<Integer, Integer> vectorTime = null;
+	//vector time/lamport time switch
 	private static final boolean LAMPORT_MODE = true;
 	private boolean isDelayedPublished = false;
 	private boolean isErrorMessage = false;
@@ -83,7 +82,6 @@ public class TextMessage implements Comparable<TextMessage> {
 			this.vectorTime = readTimeVector(jsonMessage
 					.getJSONObject("time_vector"));
 		else {
-			Log.d("Chat","used backup time");
 			Map<Integer, Integer> backupVectorTime = new HashMap<Integer, Integer>(
 					1);
 			backupVectorTime.put(0, backupLamportTime);
@@ -104,7 +102,6 @@ public class TextMessage implements Comparable<TextMessage> {
 			this.vectorTime = readTimeVector(jsonMessage
 					.getJSONObject("time_vector"));
 		} else {
-			Log.d("Chat","used backup time");
 			this.vectorTime = new HashMap<Integer, Integer>();
 			this.vectorTime.putAll(backupVectorTime);
 		}
@@ -114,7 +111,7 @@ public class TextMessage implements Comparable<TextMessage> {
 		JSONObject object = new JSONObject();
 		object.put("text", message);
 		object.put("sender", senderName);
-		object.put("lamport_time",
+		object.put("time_vector",
 				getVectorTimeJSONObject(this.getVectorTime()));
 		return object;
 	}
@@ -125,10 +122,14 @@ public class TextMessage implements Comparable<TextMessage> {
 
 	public String getFormatedTime() {
 		if (LAMPORT_MODE) {
-			return this.vectorTime.get(0) + "";
+			return "Lamport time: "+this.vectorTime.get(0);
 		} else {
-			// TODO Frederik
-			return null;
+			Set<Entry<Integer,Integer>> vectorEntries = vectorTime.entrySet();
+			String formatedTime = "Time vector:";
+			for (Entry<Integer, Integer> entry : vectorEntries) {
+				formatedTime = formatedTime.concat(" "+entry.getKey()+": "+entry.getValue()+";");
+			}
+			return formatedTime;
 		}
 	}
 

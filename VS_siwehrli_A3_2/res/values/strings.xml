@@ -24,6 +24,5 @@
     <string name="dialog_deregister">deregistering...</string>
     <string name="missing_message">Some messages may be missing!</string>
     <string name="delayed_message">A delayed message has arrived!</string>
-    <string name="sender_app">Chat notification</string>
 
 </resources>
