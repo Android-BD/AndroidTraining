@@ -222,8 +222,12 @@ public class TextMessage implements Comparable<TextMessage> {
 	public static Map<Integer, Integer> readTimeVector(JSONObject o)
 			throws JSONException {
 		JSONArray names = o.names();
-		Map<Integer, Integer> map = new HashMap<Integer, Integer>(
-				names.length());
+		Map<Integer, Integer> map;
+		if (names == null) {
+			map = new HashMap<Integer, Integer>(0);
+		} else {
+			map = new HashMap<Integer, Integer>(names.length());
+		}
 
 		for (int i = 0; i < names.length(); ++i) {
 			map.put(names.getInt(i), o.getInt(names.getString(i)));

@@ -42,8 +42,8 @@ public class MainActivity extends Activity {
 	private static final int REGISTRATION_TIMEOUT = 10000;
 	private static final int MESSAGE_RECEIVE_TIMEOUT = 2000;
 	private static final int MESSAGE_DELIVERY_TIMEOUT = 5000;
-	
-	//vector time/lamport time switch
+
+	// vector time/lamport time switch
 	private static final boolean LAMPORT_MODE = false;
 
 	private static final String SETTINGS_NAME = "Settings";
@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
 	// data structure for holding messages
 	ArrayList<TextMessage> messages = new ArrayList<TextMessage>();
 	PriorityBlockingQueue<TextMessage> waitingMessages = new PriorityBlockingQueue<TextMessage>();
-	
+
 	private boolean registered = false;
 	private String userName = ""; // is saved if app is stopped by OS
 	private int index;
@@ -101,13 +101,13 @@ public class MainActivity extends Activity {
 		// end the other threads
 		running = false;
 		super.onDestroy();
-		
-		//app is exiting, if still registered -> unregister now
+
+		// app is exiting, if still registered -> unregister now
 		if (registered) {
 			RegisterTask task = new RegisterTask(userName, false);
 			task.execute();
 		}
-		
+
 		// save settings
 		SharedPreferences settings = getSharedPreferences(SETTINGS_NAME,
 				MODE_PRIVATE);
@@ -117,43 +117,43 @@ public class MainActivity extends Activity {
 	}
 
 	public void onClickRegister(View view) {
-		//toggle button click
+		// toggle button click
 		ToggleButton tb = ((ToggleButton) view);
-		
-		//save name
+
+		// save name
 		EditText editName = (EditText) findViewById(R.id.editName);
 		this.userName = editName.getText().toString();
-		
-		//start async task to register
+
+		// start async task to register
 		RegisterTask task = new RegisterTask(userName, tb.isChecked());
 		task.execute();
 	}
 
 	public void onClickSend(View view) {
-		//send method
-		//check if registered
+		// send method
+		// check if registered
 		if (registered) {
 			EditText editMessage = (EditText) findViewById(R.id.editMessage);
 			String message = editMessage.getText().toString();
-			
-			//check if there is text
+
+			// check if there is text
 			if (!message.equals("")) {
-				//start async task to send message
+				// start async task to send message
 				SendTask task = new SendTask();
 				task.execute(message);
 			} else {
-				//no text info toast
+				// no text info toast
 				Toast.makeText(this, R.string.message_empty, TOAST_DURATION)
 						.show();
 			}
 		} else {
-			//register first info toast
+			// register first info toast
 			Toast.makeText(this, R.string.register_needed, TOAST_DURATION)
 					.show();
 		}
 	}
-	
-	//create register request
+
+	// create register request
 	private static String createRequest_register(String userName)
 			throws JSONException {
 		JSONObject object = new JSONObject();
@@ -163,8 +163,8 @@ public class MainActivity extends Activity {
 
 		return object.toString();
 	}
-	
-	//create deregister request
+
+	// create deregister request
 	private static String createRequest_deregister(String userName)
 			throws JSONException {
 		JSONObject object = new JSONObject();
@@ -173,8 +173,8 @@ public class MainActivity extends Activity {
 
 		return object.toString();
 	}
-	
-	//create info request (actually never used)
+
+	// create info request (actually never used)
 	private static String createRequest_info() throws JSONException {
 		JSONObject object = new JSONObject();
 
@@ -182,8 +182,8 @@ public class MainActivity extends Activity {
 
 		return object.toString();
 	}
-	
-	//async task which handles registering and deregistering
+
+	// async task which handles registering and deregistering
 	private class RegisterTask extends AsyncTask<Void, Void, Void> {
 		private ProgressDialog progressDialog;
 		String userName;
@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
 
 		@Override
 		protected void onPreExecute() {
-			//show busy text according to current action
+			// show busy text according to current action
 			if (running) {
 				if (registering)
 					progressDialog = ProgressDialog.show(MainActivity.this, "",
@@ -278,7 +278,7 @@ public class MainActivity extends Activity {
 						to, REGISTER_PORT);
 
 				socket.send(packet);
-				
+
 				// Receive
 				data = new byte[PACKET_SIZE];
 				DatagramPacket pack = new DatagramPacket(data, PACKET_SIZE);
@@ -346,8 +346,7 @@ public class MainActivity extends Activity {
 
 				String answer = new String(pack.getData(), 0, pack.getLength());
 				Log.d(LOG_TAG, "Received message: " + answer);
-				
-				
+
 				JSONObject jsonAnswer = new JSONObject(answer);
 				if (jsonAnswer.has("success")) {
 					String success = jsonAnswer.getString("success");
@@ -358,8 +357,9 @@ public class MainActivity extends Activity {
 						socket.close();
 					}
 				} else if (jsonAnswer.has("error")) {
-					//the only error that can happen is "not registered"
-					//which is the state we are trying to reach, so no error info to the user
+					// the only error that can happen is "not registered"
+					// which is the state we are trying to reach, so no error
+					// info to the user
 					socket.close();
 					registered = false;
 				}
@@ -380,11 +380,15 @@ public class MainActivity extends Activity {
 
 		@Override
 		protected void onPostExecute(Void result) {
-			//(un)lock username textfield
+			// (un)lock username textfield and set focus
 			EditText editName = (EditText) findViewById(R.id.editName);
 			editName.setEnabled(!registered);
-			
-			//set togglebutton status
+			if (registered) {
+				EditText editMessage = (EditText) findViewById(R.id.editMessage);
+				editMessage.requestFocus();
+			}
+
+			// set togglebutton status
 			ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonRegister);
 			tb.setChecked(registered);
 
@@ -399,7 +403,7 @@ public class MainActivity extends Activity {
 					receiveTask.start();
 				}
 			} else if (messageSocket != null) {
-				//deregistered, now close message socket
+				// deregistered, now close message socket
 				messageSocket.close();
 			}
 
@@ -420,9 +424,9 @@ public class MainActivity extends Activity {
 			// Time logic
 			TextMessage message;
 			synchronized (currentVectorTime) {
-				//increase lampart time
+				// increase lampart time
 				currentVectorTime.put(0, currentVectorTime.get(0) + 1);
-				//increase own index time
+				// increase own index time
 				currentVectorTime.put(index, currentVectorTime.get(index) + 1);
 				message = new TextMessage(args[0], userName, currentVectorTime);
 			}
@@ -433,14 +437,13 @@ public class MainActivity extends Activity {
 
 				// build JSON
 				JSONObject jsonMessage = message.getJSONObject();
-				jsonMessage.put("cmd", "message");
 				String request = jsonMessage.toString();
 				Log.d(LOG_TAG, "Sending: " + request);
 
 				// send packet
 				byte[] data = request.getBytes();
 				DatagramPacket packet = new DatagramPacket(data, data.length,
-						to, CHAT_PORT);
+						to, REGISTER_PORT);
 				messageSocket.send(packet);
 
 				// only add message to view if sent to the server successful
@@ -469,7 +472,7 @@ public class MainActivity extends Activity {
 				Toast.makeText(MainActivity.this,
 						R.string.message_sending_failed, TOAST_DURATION).show();
 			else {
-				//clear message textview
+				// clear message textview
 				EditText editMessage = (EditText) findViewById(R.id.editMessage);
 				editMessage.setText("");
 			}
@@ -507,61 +510,20 @@ public class MainActivity extends Activity {
 					// compare to current time
 					int comp = message.compareTo(compareMessage);
 					if (comp < -1) {
-						//delayed message, deliver flagged as delayed
+						// delayed message, deliver flagged as delayed
 						message.setDelayedPublished();
 						deliverMessage(message);
 					} else if (comp <= 1) {
-						//normal message, just deliver
+						// normal message, just deliver
 						deliverMessage(message);
 					} else {
-						//message early (some messages may be missing)
-						//wait for timeout to pass before delivery
+						// message early (some messages may be missing)
+						// wait for timeout to pass before delivery
 						waitingMessages.put(message);
 						new TimeoutThread().start();
 					}
-					
-					//time vector is only updated when in vector time mode
-					if (!LAMPORT_MODE) {
-						// update existing time vector
-						Set<Entry<Integer, Integer>> vectorEntries = message
-								.getVectorTime().entrySet();
-						for (Entry<Integer, Integer> entry : vectorEntries) {
-							if (currentVectorTime.containsKey(entry.getKey())
-									&& entry.getValue() > currentVectorTime
-											.get(entry.getKey())) {
-								currentVectorTime.put(entry.getKey(),
-										entry.getValue());
-								Log.d(LOG_TAG, "updated " + entry.getKey()
-										+ " to " + entry.getValue());
-							}
-						}
 
-						// update time vector (eg remove entries of people
-						// that left, and add new people)
-						// only do that with server info messages, so that no evil user can force our timevector to grow or shrink
-						if (message.getSenderName().equals("Server")) {
-							if (message.getFormatedMessage().contains(
-									"has left")) {
-								String parse_index = message
-										.getFormatedMessage().replaceAll(
-												"[\\w\\s]+\\(index\\s", "");
-								int rem_index = Integer
-										.parseInt(parse_index.substring(0,
-												parse_index.length() - 1));
-								currentVectorTime.remove(rem_index);
-							} else if (message.getFormatedMessage().contains(
-									"has joined")) {
-								String parse_index = message
-										.getFormatedMessage().replaceAll(
-												"[\\w\\s]+\\(index\\s", "");
-								int add_index = Integer
-										.parseInt(parse_index.substring(0,
-												parse_index.length() - 1));
-								currentVectorTime.put(add_index, message
-										.getVectorTime().get(add_index));
-							}
-						}
-					}
+					
 				} catch (SocketTimeoutException e) {
 				} catch (SocketException e) {
 					Log.e(LOG_TAG, e.getMessage());
@@ -608,8 +570,51 @@ public class MainActivity extends Activity {
 			final TextMessage compareMessage = new TextMessage("",
 					currentVectorTime);
 			comp = message.compareTo(compareMessage);
-			if (comp > 0) {
+			if (LAMPORT_MODE && comp > 0) {
 				currentVectorTime = message.getVectorTime();
+			}
+			// time vector is only updated when in vector time mode
+			else if (comp >= 0) {
+				// update existing time vector
+				Set<Entry<Integer, Integer>> vectorEntries = message
+						.getVectorTime().entrySet();
+				for (Entry<Integer, Integer> entry : vectorEntries) {
+					if (currentVectorTime.containsKey(entry.getKey())
+							&& entry.getValue() > currentVectorTime
+									.get(entry.getKey())) {
+						currentVectorTime.put(entry.getKey(),
+								entry.getValue());
+						Log.d(LOG_TAG, "updated " + entry.getKey()
+								+ " to " + entry.getValue());
+					}
+				}
+
+				// update time vector (eg remove entries of people
+				// that left, and add new people)
+				// only do that with server info messages, so that no
+				// evil user can force our timevector to grow or shrink
+				if (message.getSenderName().equals("Server")) {
+					if (message.getFormatedMessage().contains(
+							"has left")) {
+						String parse_index = message
+								.getFormatedMessage().replaceAll(
+										"[\\w\\s]+\\(index\\s", "");
+						int rem_index = Integer
+								.parseInt(parse_index.substring(0,
+										parse_index.length() - 1));
+						currentVectorTime.remove(rem_index);
+					} else if (message.getFormatedMessage().contains(
+							"has joined")) {
+						String parse_index = message
+								.getFormatedMessage().replaceAll(
+										"[\\w\\s]+\\(index\\s", "");
+						int add_index = Integer
+								.parseInt(parse_index.substring(0,
+										parse_index.length() - 1));
+						currentVectorTime.put(add_index, message
+								.getVectorTime().get(add_index));
+					}
+				}
 			}
 		}
 		synchronized (messages) {
@@ -621,9 +626,10 @@ public class MainActivity extends Activity {
 			// notify gui
 			handler.post(new Runnable() {
 				public void run() {
-					if(message.isDelayedPublished())
-					{
-						Toast.makeText(getApplicationContext(),R.string.delayed_message,Toast.LENGTH_SHORT).show();
+					if (message.isDelayedPublished()) {
+						Toast.makeText(getApplicationContext(),
+								R.string.delayed_message, Toast.LENGTH_SHORT)
+								.show();
 					}
 					adapter.notifyDataSetChanged();
 				}

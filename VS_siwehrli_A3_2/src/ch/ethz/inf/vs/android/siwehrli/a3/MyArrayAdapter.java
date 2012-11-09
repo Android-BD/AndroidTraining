@@ -67,7 +67,7 @@ public class MyArrayAdapter extends ArrayAdapter<TextMessage> {
 		}
 		else
 		{
-			messageView.setBackgroundColor(Color.LTGRAY);
+			messageView.setBackgroundColor(Color.WHITE);
 		}
 		return messageView;
 	}
