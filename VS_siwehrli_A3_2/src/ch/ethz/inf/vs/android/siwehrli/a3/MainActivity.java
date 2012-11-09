@@ -39,8 +39,8 @@ public class MainActivity extends Activity {
 	private static final int CHAT_PORT = 4001;
 	private static final int TOAST_DURATION = Toast.LENGTH_SHORT;
 	private static final int PACKET_SIZE = 1024;
-	private static final int REGISTRATION_TIMEOUT = 5000;
-	private static final int MESSAGE_RECEIVE_TIMEOUT = 2000;
+	private static final int REGISTRATION_TIMEOUT = 10000;
+	private static final int MESSAGE_RECEIVE_TIMEOUT = 5000;
 	private static final int MESSAGE_DELIVERY_TIMEOUT = 5000;
 
 	// vector time/lamport time switch
@@ -50,7 +50,6 @@ public class MainActivity extends Activity {
 	private MyArrayAdapter adapter;
 	private ReceiveTask receiveTask;
 	private boolean running = false;
-	private DatagramSocket messageSocket = null;
 
 	/**
 	 * On the handler it's possible to post Runnables to be executed by the GUI
@@ -244,20 +243,6 @@ public class MainActivity extends Activity {
 		private void register() {
 			Log.d(LOG_TAG, "Register user with name: " + userName);
 
-			try {
-				// create reusable socket
-				DatagramChannel channel = DatagramChannel.open();
-				messageSocket = channel.socket();
-				messageSocket.setReuseAddress(true);
-				InetSocketAddress addr = new InetSocketAddress(CHAT_PORT);
-				messageSocket.bind(addr);
-				messageSocket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
-			} catch (SocketException e) {
-				Log.e(LOG_TAG, e.getMessage());
-			} catch (IOException e) {
-				Log.e(LOG_TAG, e.getMessage());
-			}
-
 			DatagramSocket socket = null;
 			try {
 				// create reusable socket
@@ -402,11 +387,7 @@ public class MainActivity extends Activity {
 					receiveTask = new ReceiveTask();
 					receiveTask.start();
 				}
-			} else if (messageSocket != null) {
-				// deregistered, now close message socket
-				messageSocket.close();
 			}
-
 			if (progressDialog != null) {
 				progressDialog.dismiss();
 			}
@@ -432,24 +413,33 @@ public class MainActivity extends Activity {
 			}
 			Log.d(LOG_TAG, "Send message: " + message.getFormatedMessage());
 			// sending message
+			DatagramSocket socket = null;
 			try {
+				// create reusable socket
+				DatagramChannel channel = DatagramChannel.open();
+				socket = channel.socket();
+				socket.setReuseAddress(true);
+				InetSocketAddress addr = new InetSocketAddress(REGISTER_PORT);
+				socket.bind(addr);
+				socket.setSoTimeout(REGISTRATION_TIMEOUT);
+
 				InetAddress to = InetAddress.getByName(HOST_NAME);
 
 				// build JSON
 				JSONObject jsonMessage = message.getJSONObject();
-				jsonMessage.put("cmd", "message");
 				String request = jsonMessage.toString();
 				Log.d(LOG_TAG, "Sending: " + request);
 
 				// send packet
 				byte[] data = request.getBytes();
 				DatagramPacket packet = new DatagramPacket(data, data.length,
-						to, CHAT_PORT);
-				messageSocket.send(packet);
+						to, REGISTER_PORT);
+				socket.send(packet);
 
 				// only add message to view if sent to the server successful
 				messages.add(message);
 				publishProgress();
+				socket.close();
 				return true;
 			} catch (SocketException e) {
 				Log.e(LOG_TAG, e.getMessage());
@@ -490,11 +480,21 @@ public class MainActivity extends Activity {
 			// Receive
 			byte[] data;
 			DatagramPacket pack;
+			DatagramSocket socket = null;
 			while (registered && running) {
 				try {
+					// create reusable socket
+					DatagramChannel channel = DatagramChannel.open();
+					socket = channel.socket();
+					socket.setReuseAddress(true);
+					InetSocketAddress addr = new InetSocketAddress(CHAT_PORT);
+					socket.bind(addr);
+					socket.setSoTimeout(MESSAGE_RECEIVE_TIMEOUT);
+
 					data = new byte[PACKET_SIZE];
 					pack = new DatagramPacket(data, PACKET_SIZE);
-					messageSocket.receive(pack);
+
+					socket.receive(pack);
 
 					String answer = new String(pack.getData(), 0,
 							pack.getLength());
@@ -513,6 +513,10 @@ public class MainActivity extends Activity {
 					if (comp < -1) {
 						// delayed message, deliver flagged as delayed
 						message.setDelayedPublished();
+						Log.d(LOG_TAG,"setdelayPublished set");
+						Log.d(LOG_TAG,"current "+compareMessage.getFormatedTime());
+						Log.d(LOG_TAG,"message "+message.getFormatedTime());
+
 						deliverMessage(message);
 					} else if (comp <= 1) {
 						// normal message, just deliver
@@ -524,7 +528,6 @@ public class MainActivity extends Activity {
 						new TimeoutThread().start();
 					}
 
-					
 				} catch (SocketTimeoutException e) {
 				} catch (SocketException e) {
 					Log.e(LOG_TAG, e.getMessage());
@@ -534,6 +537,9 @@ public class MainActivity extends Activity {
 					Log.e(LOG_TAG, e.getMessage());
 				}
 
+			}
+			if (socket != null) {
+				socket.close();
 			}
 			Log.d(LOG_TAG, "Stop receiving messages");
 		}
@@ -581,12 +587,11 @@ public class MainActivity extends Activity {
 						.getVectorTime().entrySet();
 				for (Entry<Integer, Integer> entry : vectorEntries) {
 					if (currentVectorTime.containsKey(entry.getKey())
-							&& entry.getValue() > currentVectorTime
-									.get(entry.getKey())) {
-						currentVectorTime.put(entry.getKey(),
-								entry.getValue());
-						Log.d(LOG_TAG, "updated " + entry.getKey()
-								+ " to " + entry.getValue());
+							&& entry.getValue() > currentVectorTime.get(entry
+									.getKey())) {
+						currentVectorTime.put(entry.getKey(), entry.getValue());
+						Log.d(LOG_TAG, "updated " + entry.getKey() + " to "
+								+ entry.getValue());
 					}
 				}
 
@@ -595,27 +600,27 @@ public class MainActivity extends Activity {
 				// only do that with server info messages, so that no
 				// evil user can force our timevector to grow or shrink
 				if (message.getSenderName().equals("Server")) {
-					if (message.getFormatedMessage().contains(
-							"has left")) {
-						String parse_index = message
-								.getFormatedMessage().replaceAll(
-										"[\\w\\s]+\\(index\\s", "");
-						int rem_index = Integer
-								.parseInt(parse_index.substring(0,
-										parse_index.length() - 1));
-						currentVectorTime.remove(rem_index);
-					} else if (message.getFormatedMessage().contains(
-							"has joined")) {
-						String parse_index = message
-								.getFormatedMessage().replaceAll(
-										"[\\w\\s]+\\(index\\s", "");
-						int add_index = Integer
-								.parseInt(parse_index.substring(0,
-										parse_index.length() - 1));
-						currentVectorTime.put(add_index, message
-								.getVectorTime().get(add_index));
+					try {
+						if (message.getFormatedMessage().contains("has left")) {
+							String parse_index = message.getFormatedMessage()
+									.replaceAll("[\\w\\s]+\\(index\\s", "");
+							int rem_index = Integer.parseInt(parse_index
+									.substring(0, parse_index.length() - 1));
+							currentVectorTime.remove(rem_index);
+						} else if (message.getFormatedMessage().contains(
+								"has joined")) {
+							String parse_index = message.getFormatedMessage()
+									.replaceAll("[\\w\\s]+\\(index\\s", "");
+							int add_index = Integer.parseInt(parse_index
+									.substring(0, parse_index.length() - 1));
+							currentVectorTime.put(add_index, message
+									.getVectorTime().get(add_index));
+						}
+					} catch (NumberFormatException e) {
+						Log.d(LOG_TAG, e.getMessage());
 					}
 				}
+
 			}
 		}
 		synchronized (messages) {
@@ -637,5 +642,4 @@ public class MainActivity extends Activity {
 			});
 		}
 	}
-
 }

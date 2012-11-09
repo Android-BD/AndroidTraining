@@ -26,7 +26,7 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	private Map<Integer, Integer> vectorTime = null;
-	//vector time/lamport time switch
+	// vector time/lamport time switch
 	private static final boolean LAMPORT_MODE = true;
 	private boolean isDelayedPublished = false;
 	private boolean isErrorMessage = false;
@@ -109,10 +109,10 @@ public class TextMessage implements Comparable<TextMessage> {
 
 	public JSONObject getJSONObject() throws JSONException {
 		JSONObject object = new JSONObject();
-		object.put("text", message);
 		object.put("sender", senderName);
-		object.put("time_vector",
-				getVectorTimeJSONObject(this.getVectorTime()));
+		object.put("cmd", "message");
+		object.put("text", message);
+		object.put("time_vector", getVectorTimeJSONObject(this.getVectorTime()));
 		return object;
 	}
 
@@ -122,12 +122,13 @@ public class TextMessage implements Comparable<TextMessage> {
 
 	public String getFormatedTime() {
 		if (LAMPORT_MODE) {
-			return "Lamport time: "+this.vectorTime.get(0);
+			return "Lamport time: " + this.vectorTime.get(0);
 		} else {
-			Set<Entry<Integer,Integer>> vectorEntries = vectorTime.entrySet();
+			Set<Entry<Integer, Integer>> vectorEntries = vectorTime.entrySet();
 			String formatedTime = "Time vector:";
 			for (Entry<Integer, Integer> entry : vectorEntries) {
-				formatedTime = formatedTime.concat(" "+entry.getKey()+": "+entry.getValue()+";");
+				formatedTime = formatedTime.concat(" " + entry.getKey() + ": "
+						+ entry.getValue() + ";");
 			}
 			return formatedTime;
 		}
@@ -182,16 +183,13 @@ public class TextMessage implements Comparable<TextMessage> {
 	// method to determine if a message is on time
 	// if in doubt assume on time (to allow more messages to be displayed)
 	public boolean isDeliverable(Map<Integer, Integer> currentVectorTime) {
-		
+
 		TextMessage dummyMessage = new TextMessage("", currentVectorTime);
 		int comp = this.compareTo(dummyMessage);
-		
-		if(comp <= 1)
-		{
+
+		if (comp <= 1) {
 			return true;
-		}
-		else
-		{
+		} else {
 			return false;
 		}
 	}
@@ -200,13 +198,10 @@ public class TextMessage implements Comparable<TextMessage> {
 	public boolean isDelayed(Map<Integer, Integer> currentVectorTime) {
 		TextMessage dummyMessage = new TextMessage("", currentVectorTime);
 		int comp = this.compareTo(dummyMessage);
-		
-		if(comp < -1)
-		{
+
+		if (comp < -1) {
 			return true;
-		}
-		else
-		{
+		} else {
 			return false;
 		}
 	}
