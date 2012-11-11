@@ -26,8 +26,6 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	private Map<Integer, Integer> vectorTime = null;
-	// vector time/lamport time switch
-	private static final boolean LAMPORT_MODE = true;
 	private boolean isDelayedPublished = false;
 	private boolean isErrorMessage = false;
 
@@ -121,7 +119,7 @@ public class TextMessage implements Comparable<TextMessage> {
 	}
 
 	public String getFormatedTime() {
-		if (LAMPORT_MODE) {
+		if (MainActivity.LAMPORT_MODE) {
 			return "Lamport time: " + this.vectorTime.get(0);
 		} else {
 			Set<Entry<Integer, Integer>> vectorEntries = vectorTime.entrySet();
@@ -149,7 +147,7 @@ public class TextMessage implements Comparable<TextMessage> {
 	public int compareTo(TextMessage another) {
 		if (another.vectorTime == null || vectorTime == null) {
 			return 0;
-		} else if (LAMPORT_MODE) {
+		} else if (MainActivity.LAMPORT_MODE) {
 			return (vectorTime.get(0) - another.vectorTime.get(0));
 		} else {
 			// collect time vector differences

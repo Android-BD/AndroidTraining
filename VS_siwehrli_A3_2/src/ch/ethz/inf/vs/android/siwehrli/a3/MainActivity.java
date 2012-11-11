@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
 	private static final int MESSAGE_DELIVERY_TIMEOUT = 5000;
 
 	// vector time/lamport time switch
-	private static final boolean LAMPORT_MODE = true;
+	public static final boolean LAMPORT_MODE = true;
 
 	private static final String SETTINGS_NAME = "Settings";
 	private MyArrayAdapter adapter;
